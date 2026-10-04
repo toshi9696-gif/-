@@ -1,0 +1,38 @@
+# XcodeGen の設定。`xcodegen generate` で HealthApp.xcodeproj を生成する。
+name: HealthApp
+options:
+  bundleIdPrefix: com.toshi9696
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  BodyCompCore:
+    path: BodyCompCore
+targets:
+  HealthApp:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: BodyCompCore
+    entitlements:
+      path: App/HealthApp.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: 体組成ログ
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSCameraUsageDescription: 体組成計のレシートを撮影して数値を読み取るために使います。
+        NSHealthShareUsageDescription: 歩数・運動・睡眠などのデータを体組成の変化と並べて表示するために使います。
+        NSHealthUpdateUsageDescription: 体重・体脂肪率・除脂肪量・BMIをヘルスケアに記録するために使います。
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.toshi9696.bodylog
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_STYLE: Automatic
+        # Xcode の Signing & Capabilities で Team を選ぶか、ここに Team ID を書く。
+        DEVELOPMENT_TEAM: ""

@@ -1,0 +1,11 @@
+# XcodeGen で生成するファイル
+*.xcodeproj
+App/Info.plist
+App/HealthApp.entitlements
+
+# Xcode / SwiftPM
+xcuserdata/
+DerivedData/
+.build/
+.swiftpm/
+.DS_Store
