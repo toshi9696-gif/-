@@ -13,6 +13,9 @@ TANITA DC-430A のレシートと Apple Watch のデータから、内臓脂肪�
 
 ## ビルド手順（Mac）
 
+初めての方は [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)（非エンジニア向けの詳しい手順）を参照。
+
+
 1. XcodeGen を入れる：`brew install xcodegen`
 2. リポジトリを取得してブランチを切り替える
    ```sh
