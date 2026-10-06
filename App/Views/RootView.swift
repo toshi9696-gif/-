@@ -46,7 +46,7 @@ struct RootView: View {
             .ignoresSafeArea()
         }
         .sheet(item: $draft) { draft in
-            ConfirmView(parsed: draft.measurement)
+            ConfirmView(parsed: draft.measurement, rawRows: draft.rawRows)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -81,7 +81,7 @@ struct RootView: View {
             defer { isProcessing = false }
             do {
                 let rows = try await ReceiptOCR.recognizeRows(in: image)
-                draft = ReceiptDraft(measurement: ReceiptParser.parse(rows: rows))
+                draft = ReceiptDraft(measurement: ReceiptParser.parse(rows: rows), rawRows: rows)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -92,4 +92,5 @@ struct RootView: View {
 struct ReceiptDraft: Identifiable {
     let id = UUID()
     let measurement: BodyMeasurement
+    let rawRows: [String]
 }

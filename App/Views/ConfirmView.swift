@@ -17,7 +17,11 @@ struct ConfirmView: View {
     @State private var isSaving = false
     @State private var healthKitError: String?
 
-    init(parsed: BodyMeasurement) {
+    /// OCR で読み取った行のテキスト（読み取り精度の調整用）。
+    let rawRows: [String]
+
+    init(parsed: BodyMeasurement, rawRows: [String] = []) {
+        self.rawRows = rawRows
         _measuredAt = State(initialValue: parsed.measuredAt ?? Date())
         _dateWasRead = State(initialValue: parsed.measuredAt != nil)
         var texts: [ReceiptField: String] = [:]
@@ -88,6 +92,18 @@ struct ConfirmView: View {
                         Spacer()
                         TextField("—", text: $bodyType)
                             .multilineTextAlignment(.trailing)
+                    }
+                }
+
+                if !rawRows.isEmpty {
+                    Section {
+                        DisclosureGroup("読み取った文字（確認用）") {
+                            Text(rawRows.joined(separator: "\n"))
+                                .font(.footnote.monospaced())
+                                .textSelection(.enabled)
+                        }
+                    } footer: {
+                        Text("読み取りがうまくいかないときは、ここを開いた画面のスクリーンショットを送ってください。")
                     }
                 }
             }

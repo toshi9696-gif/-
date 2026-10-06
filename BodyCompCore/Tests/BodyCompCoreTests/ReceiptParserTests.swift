@@ -80,6 +80,25 @@ final class ReceiptParserTests: XCTestCase {
         XCTAssertEqual(m[.visceralLevel], 11)
     }
 
+    /// 太字の漢字が読み違えられても、項目名の大部分が合っていれば正しい項目に割り当てる。
+    func testMatchesMisreadLabels() {
+        let m = ReceiptParser.parse(rows: [
+            "身畏 1 6 7. 0 cm",
+            "着衣暈 (PT) 0. 5 kg",
+            "脂肪暈 1 0. 9 kg",
+            "除脂肪暈 5 3. 9 kg",
+            "筋肉暈 5 1. 1 kg",
+            "推定骨暈 2. 8 kg",
+            "基礎代謝暈 1 4 5 9 kcal",
+            "内臓脂肪レペル 1 1",
+        ], calendar: calendar)
+        let expected: [ReceiptField: Double] = [
+            .height: 167.0, .clothes: 0.5, .fatMass: 10.9, .leanMass: 53.9,
+            .muscleMass: 51.1, .boneMass: 2.8, .bmr: 1459, .visceralLevel: 11,
+        ]
+        XCTAssertEqual(m.values, expected)
+    }
+
     func testFullWidthCharactersAndDateWithMisreadWeekday() throws {
         let m = ReceiptParser.parse(rows: ["２０２６/０９/３０(7k)２１:２５", "体重 ６４．８ ｋｇ"], calendar: calendar)
         XCTAssertEqual(m[.weight], 64.8)
