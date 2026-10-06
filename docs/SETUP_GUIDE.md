@@ -68,17 +68,21 @@ brew install xcodegen
 
 ## ④ Xcode 用のプロジェクトを作る
 
-1. ターミナルに次の文字を **入力するだけ**（`cd` の後ろに半角スペースを 1 つ。まだ Enter は押さない）。
+1. ③ で名前を **body-log** に変えたフォルダが「ダウンロード」フォルダにあることを Finder で確認する。
+   （フォルダを別の場所に移した場合は、いったん「ダウンロード」に戻すと手順どおりに進められます）
+2. キーボードの **「英数」キー** を押して、日本語入力をオフにする。
+   日本語入力のままだとスペースが全角になり、`command not found` というエラーになります。
+3. 次をコピーして貼り付け、Enter。
    ```
-   cd 
+   cd ~/Downloads/body-log
    ```
-2. Finder から **body-log フォルダをターミナルの画面にドラッグ＆ドロップ**する。フォルダの場所が自動で入力されるので、ここで Enter。
-3. 次を実行する。
+   エラーが出ずに、行の先頭が `body-log %` に変われば成功です。
+4. 次を実行する。
    ```
    xcodegen generate
    ```
    `Created project at ... HealthApp.xcodeproj` と出れば成功です。
-4. 次を実行すると Xcode が開きます。
+5. 次を実行すると Xcode が開きます。
    ```
    open HealthApp.xcodeproj
    ```
@@ -118,7 +122,8 @@ brew install xcodegen
 | 症状 | 対処 |
 |---|---|
 | `command not found: xcodegen` | ② をやり直す。2-2 の「Next steps」のコマンドを実行し忘れていることが多い |
-| `Spec file not found` | ④ の `cd` が正しく行われていない。④-1 からやり直す |
+| `zsh: command not found: cd　…` | 日本語入力のままで、スペースが全角になっている。「英数」キーを押してから ④-3 をやり直す |
+| `No project spec found` / `Spec file not found` | body-log フォルダに移動できていない。④-1 からやり直す |
 | Xcode で「Signing for "HealthApp" requires a development team」 | 5-1 の Team を選ぶ |
 | 「Failed to register bundle identifier」 | `project.yml` の `com.toshi9696.bodylog` を別の名前（例：`com.toshi9696.bodylog2`）に変えて ④-3 からやり直す |
 | iPhone が実行先に出てこない | ケーブルをつなぎ直す、iPhone のロックを解除する、5-2 のデベロッパモードを確認する |
