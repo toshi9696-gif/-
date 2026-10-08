@@ -31,15 +31,17 @@ public enum ReceiptParser {
     }
 
     /// 行のテキストから測定値を取り出す。同じ項目が複数回出てきた場合は最初の値を使う。
+    /// 最も一致する項目がすでに埋まっている場合は、次に一致する空いた項目に割り当てる
+    /// （「除脂肪量」の「除」が読めず「脂肪量」と区別できないときなど）。
     public static func parse(rows: [String], calendar: Calendar = .current) -> BodyMeasurement {
         let compact = rows.map(normalize)
         var measurement = BodyMeasurement()
         measurement.measuredAt = parseDate(compact, calendar: calendar)
         for row in compact {
-            guard let match = matchLabel(row),
-                  measurement[match.field] == nil,
-                  let value = number(from: match.remainder) else { continue }
-            measurement[match.field] = value
+            let (candidates, remainder) = matchLabels(row)
+            guard let field = candidates.first(where: { measurement[$0] == nil }),
+                  let value = number(from: remainder, field: field) else { continue }
+            measurement[field] = value
         }
         measurement.bodyType = parseBodyType(compact)
         return measurement
@@ -54,22 +56,28 @@ public enum ReceiptParser {
     /// OCR では太字の漢字（「量」「ベ」など）がよく読み違えられるため、完全一致ではなく
     /// 項目名の文字がどれだけ含まれているかで判定する。同点なら長い項目名を優先する（「脂肪量」と「除脂肪量」など）。
     static func matchLabel(_ row: String) -> (field: ReceiptField, remainder: Substring)? {
+        let (candidates, remainder) = matchLabels(row)
+        return candidates.first.map { ($0, remainder) }
+    }
+
+    /// 一致度の高い順に並べた項目の候補と、値の部分を返す。
+    static func matchLabels(_ row: String) -> (candidates: [ReceiptField], remainder: Substring) {
         let (prefix, remainder) = splitLabel(row)
-        guard !prefix.isEmpty else { return nil }
+        guard !prefix.isEmpty else { return ([], remainder) }
         let characters = Set(prefix)
-        var best: (field: ReceiptField, score: Double, length: Int)?
+        var scored: [(field: ReceiptField, score: Double, length: Int)] = []
         for field in ReceiptField.allCases {
             for label in field.receiptLabels {
                 let hits = label.filter { characters.contains($0) }.count
                 let score = Double(hits) / Double(label.count)
                 guard hits > 0, score >= 0.5 else { continue }
-                if best == nil || score > best!.score || (score == best!.score && label.count > best!.length) {
-                    best = (field, score, label.count)
-                }
+                scored.append((field, score, label.count))
             }
         }
-        guard let best else { return nil }
-        return (best.field, remainder)
+        scored.sort { $0.score != $1.score ? $0.score > $1.score : $0.length > $1.length }
+        var seen = Set<ReceiptField>()
+        let candidates = scored.map(\.field).filter { seen.insert($0).inserted }
+        return (candidates, remainder)
     }
 
     /// 最初の数字より前を項目名、それ以降を値とみなす。
@@ -89,7 +97,8 @@ public enum ReceiptParser {
     }
 
     /// 項目名の後ろから数値を取り出す。単位を除いてから、数字に似た文字を数字に置き換える。
-    static func number(from text: Substring) -> Double? {
+    /// 小数点が読めずに想定範囲を外れた場合は、レシートの桁数に合わせて小数点を補う（「113」→「11.3」）。
+    static func number(from text: Substring, field: ReceiptField? = nil) -> Double? {
         let withoutUnits = String(text)
             .replacingOccurrences(of: #"(?i)kca.|k[gq9]|cm|\(?PT\)?"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: #"[%才点]"#, with: "", options: .regularExpression)
@@ -106,8 +115,15 @@ public enum ReceiptParser {
             }
         })
         let digits = mapped.filter { $0.isASCII && ($0.isNumber || $0 == ".") }
-        guard let range = digits.range(of: #"\d+(\.\d+)?"#, options: .regularExpression) else { return nil }
-        return Double(digits[range])
+        guard let range = digits.range(of: #"\d+(\.\d+)?"#, options: .regularExpression),
+              let value = Double(digits[range]) else { return nil }
+        let token = digits[range]
+        if let field, field.fractionDigits > 0, !token.contains("."), token.count >= 2,
+           !field.validRange.contains(value) || token.hasPrefix("0") {
+            let divisor = pow(10, Double(field.fractionDigits))
+            return value / divisor
+        }
+        return value
     }
 
     /// 「2026/09/30(水)21:25」形式の日時を探す。曜日部分は読み間違いがあっても無視する。

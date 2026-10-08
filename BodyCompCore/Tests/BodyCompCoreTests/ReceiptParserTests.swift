@@ -99,6 +99,24 @@ final class ReceiptParserTests: XCTestCase {
         XCTAssertEqual(m.values, expected)
     }
 
+    /// 小数点が読めなかった値を補い、「除」が読めなかった除脂肪量の行を空いている項目に回す。
+    func testRecoversMissingDecimalPointsAndAmbiguousLabels() {
+        let m = ReceiptParser.parse(rows: [
+            "身長 1 6 7 0 cm",
+            "着衣量 (PT) 0 5 kg",
+            "体重 6 4 8 kg",
+            "脂肪量 1 1 3 kg",
+            "険脂肪量 5 3 6 kg",
+            "推定骨量 2 8 kg",
+            "BMI 2 3 2",
+        ], calendar: calendar)
+        let expected: [ReceiptField: Double] = [
+            .height: 167.0, .clothes: 0.5, .weight: 64.8, .fatMass: 11.3,
+            .leanMass: 53.6, .boneMass: 2.8, .bmi: 23.2,
+        ]
+        XCTAssertEqual(m.values, expected)
+    }
+
     func testFullWidthCharactersAndDateWithMisreadWeekday() throws {
         let m = ReceiptParser.parse(rows: ["２０２６/０９/３０(7k)２１:２５", "体重 ６４．８ ｋｇ"], calendar: calendar)
         XCTAssertEqual(m[.weight], 64.8)
