@@ -95,7 +95,8 @@ private struct VisceralCard: View {
                             .foregroundStyle(.green)
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     }
-                    .chartYScale(domain: .automatic(includesZero: false))
+                    .chartYScale(domain: ChartScale.yDomain(weekly.map(\.value) + [goal], minimumSpan: 2))
+                    .chartXAxis { ChartScale.dateAxis }
                     .frame(height: 140)
                 } else {
                     Text("2週間分の記録がたまると、週ごとの推移のグラフが表示されます")
@@ -257,9 +258,10 @@ private struct RecentTrendChart: View {
     var floor: Double?
 
     var body: some View {
-        let start = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
-        let recentPoints = points.filter { $0.date >= start }
-        let recentAverage = average.filter { $0.date >= start }
+        let xDomain = ChartScale.recentDays(30)
+        let recentPoints = points.filter { $0.date >= xDomain.lowerBound }
+        let recentAverage = average.filter { $0.date >= xDomain.lowerBound }
+        let yValues = recentPoints.map(\.value) + recentAverage.map(\.value) + (floor.map { [$0] } ?? [])
         Chart {
             ForEach(recentPoints, id: \.date) { point in
                 PointMark(x: .value("日付", point.date), y: .value(unit, point.value))
@@ -276,7 +278,9 @@ private struct RecentTrendChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
             }
         }
-        .chartYScale(domain: .automatic(includesZero: false))
+        .chartXScale(domain: xDomain)
+        .chartYScale(domain: ChartScale.yDomain(yValues, minimumSpan: 2))
+        .chartXAxis { ChartScale.dateAxis }
         .frame(height: 120)
     }
 }

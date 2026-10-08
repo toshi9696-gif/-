@@ -149,6 +149,7 @@ struct ChartsView: View {
         }
         .chartXScale(domain: xDomain)
         .chartYScale(domain: .automatic(includesZero: activityMetric.isDailyTotal))
+        .chartXAxis { ChartScale.dateAxis }
         .chartYAxisLabel(activityMetric.unit)
     }
 
@@ -163,6 +164,11 @@ struct ChartsView: View {
                 LineMark(x: .value("日付", point.date), y: .value(field.displayName, point.value))
                     .interpolationMethod(field == .visceralLevel ? .stepEnd : .monotone)
                     .lineStyle(StrokeStyle(lineWidth: 2.5))
+                if field == .visceralLevel {
+                    // 週が1つだけでも見えるよう、週の中央値に点も打つ。
+                    PointMark(x: .value("日付", point.date), y: .value(field.displayName, point.value))
+                        .symbolSize(40)
+                }
             }
             if let goal {
                 RuleMark(y: .value(goal.label, goal.value))
@@ -183,7 +189,11 @@ struct ChartsView: View {
             }
         }
         .chartXScale(domain: xDomain)
-        .chartYScale(domain: .automatic(includesZero: false))
+        .chartYScale(domain: ChartScale.yDomain(
+            points.map(\.value) + trend.map(\.value) + (goal.map { [$0.value] } ?? []),
+            minimumSpan: field.chartMinimumSpan
+        ))
+        .chartXAxis { ChartScale.dateAxis }
         .chartPlotStyle { $0.clipped() }
     }
 }
