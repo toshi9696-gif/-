@@ -10,7 +10,7 @@ struct HealthApp: App {
             RootView()
                 .environment(activity)
         }
-        .modelContainer(for: BodyRecord.self)
+        .modelContainer(for: [BodyRecord.self, WeeklyReport.self])
     }
 }
 
@@ -24,6 +24,7 @@ enum SettingsKey {
     static let zone2Manual = "zone2Manual"
     static let zone2Low = "zone2Low"
     static let zone2High = "zone2High"
+    static let reportReminder = "reportReminder"
 }
 
 /// 仕様書の目標（6か月で内臓脂肪レベル 9 以下、筋肉量 50.5kg 以上を維持）。設定画面で変更できる。

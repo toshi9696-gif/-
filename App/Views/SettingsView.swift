@@ -11,7 +11,10 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.zone2Low) private var zone2Low = 120.0
     @AppStorage(SettingsKey.zone2High) private var zone2High = 130.0
     @Environment(ActivityModel.self) private var activity
+    @AppStorage(SettingsKey.reportReminder) private var reportReminder = false
     @State private var healthMessage: String?
+    @State private var apiKeyInput = ""
+    @State private var hasAPIKey = Keychain.load(account: Keychain.claudeAPIKey) != nil
 
     var body: some View {
         NavigationStack {
@@ -31,6 +34,36 @@ struct SettingsView: View {
                     Text("目標")
                 } footer: {
                     Text("内臓脂肪レベルは、週ごとの中央値が2週連続で目標以下になったら達成とみなします。")
+                }
+
+                Section {
+                    if hasAPIKey {
+                        LabeledContent("API キー", value: "保存済み")
+                        Button("API キーを削除", role: .destructive) {
+                            Keychain.delete(account: Keychain.claudeAPIKey)
+                            hasAPIKey = false
+                        }
+                    } else {
+                        SecureField("sk-ant- で始まる API キー", text: $apiKeyInput)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button("保存") {
+                            Keychain.save(apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines), account: Keychain.claudeAPIKey)
+                            apiKeyInput = ""
+                            hasAPIKey = true
+                        }
+                        .disabled(apiKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    Toggle("日曜20時に作成を知らせる", isOn: Binding(
+                        get: { reportReminder },
+                        set: { newValue in
+                            Task { reportReminder = await ReportReminder.setEnabled(newValue) }
+                        }
+                    ))
+                } header: {
+                    Text("週次レポート（Claude）")
+                } footer: {
+                    Text("API キーは console.anthropic.com で発行し、ここに貼り付けてください。キーはこの iPhone のキーチェーンにだけ保存されます。レポート1回の費用は数円〜十数円の見込みです。")
                 }
 
                 Section {

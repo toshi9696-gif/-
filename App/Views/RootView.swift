@@ -41,6 +41,13 @@ struct RootView: View {
                     .toolbar { mainToolbar }
             }
             .tabItem { Label("記録", systemImage: "list.bullet") }
+
+            NavigationStack {
+                ReportsView()
+                    .navigationTitle("レポート")
+                    .toolbar { mainToolbar }
+            }
+            .tabItem { Label("レポート", systemImage: "sparkles") }
         }
         .overlay {
             if isProcessing {
