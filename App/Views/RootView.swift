@@ -1,9 +1,17 @@
 import BodyCompCore
 import PhotosUI
 import SwiftUI
+import SwiftData
 import VisionKit
 
 struct RootView: View {
+    @Environment(ActivityModel.self) private var activity
+    @Environment(\.scenePhase) private var scenePhase
+    @Query(sort: \BodyRecord.measuredAt, order: .reverse) private var records: [BodyRecord]
+    @AppStorage(SettingsKey.zone2Manual) private var zone2Manual = false
+    @AppStorage(SettingsKey.zone2Low) private var zone2Low = 120.0
+    @AppStorage(SettingsKey.zone2High) private var zone2High = 130.0
+
     @State private var showScanner = false
     @State private var showSettings = false
     @State private var photoItem: PhotosPickerItem?
@@ -54,8 +62,13 @@ struct RootView: View {
         .sheet(item: $draft) { draft in
             ConfirmView(parsed: draft.measurement, rawRows: draft.rawRows)
         }
-        .sheet(isPresented: $showSettings) {
+        .sheet(isPresented: $showSettings, onDismiss: { Task { await reloadActivity() } }) {
             SettingsView()
+        }
+        .onChange(of: scenePhase, initial: true) {
+            if scenePhase == .active {
+                Task { await reloadActivity() }
+            }
         }
         .onChange(of: photoItem) {
             Task { await loadPhoto() }
@@ -83,6 +96,13 @@ struct RootView: View {
             Button { showScanner = true } label: { Image(systemName: "camera") }
                 .disabled(!VNDocumentCameraViewController.isSupported)
         }
+    }
+
+    /// Apple Watch のデータを読み直す。アプリを開いたときと、設定を閉じたときに行う。
+    private func reloadActivity() async {
+        let age = records.lazy.compactMap(\.age).first.map { Int($0) }
+        let manual = zone2Manual && zone2Low < zone2High ? zone2Low...zone2High : nil
+        await activity.load(age: age, manualZone2: manual)
     }
 
     private func loadPhoto() async {

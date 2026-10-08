@@ -48,7 +48,7 @@ public enum Trends {
             .sorted { $0.date < $1.date }
     }
 
-    static func median(_ values: [Double]) -> Double {
+    public static func median(_ values: [Double]) -> Double {
         let sorted = values.sorted()
         let middle = sorted.count / 2
         return sorted.count % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2

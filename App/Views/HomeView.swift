@@ -9,6 +9,7 @@ struct HomeView: View {
     @AppStorage(SettingsKey.goalVisceral) private var goalVisceral = GoalDefaults.visceral
     @AppStorage(SettingsKey.goalMuscleFloor) private var goalMuscleFloor = GoalDefaults.muscleFloor
     @AppStorage(SettingsKey.goalDeadline) private var goalDeadline = GoalDefaults.deadline
+    @Environment(ActivityModel.self) private var activity
 
     var body: some View {
         ScrollView {
@@ -28,6 +29,7 @@ struct HomeView: View {
                     )
                     WeightCard(points: records.points(.weight))
                     MuscleCard(points: records.points(.muscleMass), floor: goalMuscleFloor)
+                    ActivityCard(model: activity)
                 }
                 .padding()
             }
@@ -175,6 +177,72 @@ private struct MuscleCard: View {
                         .foregroundStyle(.green)
                 }
             }
+        }
+    }
+}
+
+// MARK: - 今週の活動（Apple Watch）
+
+private struct ActivityCard: View {
+    let model: ActivityModel
+
+    /// 仕様書の目安：中強度の有酸素運動を週150分。
+    private let zone2WeeklyTarget = 150.0
+
+    private var summary: WeeklyActivitySummary {
+        WeeklyActivitySummary.make(model.days, weekContaining: Date())
+    }
+
+    var body: some View {
+        Card(title: "今週の活動（Apple Watch）", systemImage: "applewatch") {
+            if let error = model.errorMessage {
+                Text("ヘルスケアのデータを読めませんでした：\(error)")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            } else if summary.dayCount == 0 {
+                Text(model.isLoading ? "読み込み中…" : "今週のデータがありません。設定画面の「ヘルスケアへのアクセスを許可」から、読み取りを許可してください。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                let zone2 = summary.zone2Minutes ?? 0
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Zone2")
+                        Spacer()
+                        Text("\(Int(zone2)) / \(Int(zone2WeeklyTarget)) 分")
+                            .font(.body.monospacedDigit())
+                    }
+                    ProgressView(value: min(zone2, zone2WeeklyTarget), total: zone2WeeklyTarget)
+                        .tint(zone2 >= zone2WeeklyTarget ? .green : .blue)
+                    if let range = model.zone2Range {
+                        Text("Zone2 の心拍範囲：\(Int(range.lowerBound.rounded()))〜\(Int(range.upperBound.rounded())) bpm（ワークアウト中のみ集計）")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
+                    GridRow {
+                        metric("歩数（1日平均）", summary.averageSteps.map { String(format: "%.0f 歩", $0) })
+                        metric("エクササイズ（合計）", summary.exerciseMinutes.map { String(format: "%.0f 分", $0) })
+                    }
+                    GridRow {
+                        metric("睡眠（平均）", summary.averageSleepHours.map { String(format: "%.1f 時間", $0) })
+                        metric("安静時心拍（平均）", summary.averageRestingHeartRate.map { String(format: "%.0f bpm", $0) })
+                    }
+                    GridRow {
+                        metric("HRV（平均）", summary.averageHRV.map { String(format: "%.0f ms", $0) })
+                        metric("VO2max（最新）", model.vo2Max.map { String(format: "%.1f", $0) })
+                    }
+                }
+            }
+        }
+    }
+
+    private func metric(_ title: String, _ value: String?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(value ?? "—").font(.body.monospacedDigit())
         }
     }
 }
