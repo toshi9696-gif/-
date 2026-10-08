@@ -2,7 +2,7 @@ import BodyCompCore
 import SwiftData
 import SwiftUI
 
-/// 読み取り結果の確認と修正。整合性チェックに失敗した項目は赤で表示する。
+/// 読み取り結果の確認と修正、または保存済みの記録の編集。整合性チェックに失敗した項目は赤で表示する。
 struct ConfirmView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -14,14 +14,20 @@ struct ConfirmView: View {
     @State private var texts: [ReceiptField: String]
     @State private var bodyType: String
     @State private var showOverwrite = false
+    @State private var showIssuesConfirm = false
     @State private var isSaving = false
     @State private var healthKitError: String?
 
     /// OCR で読み取った行のテキスト（読み取り精度の調整用）。
     let rawRows: [String]
+    /// 保存済みの記録を編集するときの対象。
+    private let editingRecord: BodyRecord?
+    private let originalMeasuredAt: Date?
 
-    init(parsed: BodyMeasurement, rawRows: [String] = []) {
+    init(parsed: BodyMeasurement, rawRows: [String] = [], editing record: BodyRecord? = nil) {
         self.rawRows = rawRows
+        editingRecord = record
+        originalMeasuredAt = record?.measuredAt
         _measuredAt = State(initialValue: parsed.measuredAt ?? Date())
         _dateWasRead = State(initialValue: parsed.measuredAt != nil)
         var texts: [ReceiptField: String] = [:]
@@ -107,20 +113,32 @@ struct ConfirmView: View {
                     }
                 }
             }
-            .navigationTitle("読み取り結果")
+            .navigationTitle(editingRecord == nil ? "読み取り結果" : "記録の編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") { save(overwrite: false) }
+                    Button("保存") {
+                        if issues.isEmpty {
+                            save(overwrite: false)
+                        } else {
+                            showIssuesConfirm = true
+                        }
+                    }
                         .fontWeight(issues.isEmpty ? .bold : .regular)
                         .disabled(!canSave)
                 }
             }
             .confirmationDialog("同じ日時の記録があります", isPresented: $showOverwrite, titleVisibility: .visible) {
                 Button("上書きする", role: .destructive) { save(overwrite: true) }
+            }
+            .alert("確認が必要な項目があります", isPresented: $showIssuesConfirm) {
+                Button("戻って直す", role: .cancel) {}
+                Button("このまま保存") { save(overwrite: false) }
+            } message: {
+                Text("間違った値を保存すると、グラフや週次の判定がずれます。レシートと見比べてから保存してください。")
             }
             .alert("ヘルスケアに書き込めませんでした", isPresented: Binding(
                 get: { healthKitError != nil },
@@ -159,13 +177,19 @@ struct ConfirmView: View {
         )).first
 
         let record: BodyRecord
-        if let existing {
+        if let existing, existing.persistentModelID != editingRecord?.persistentModelID {
             guard overwrite else {
                 showOverwrite = true
                 return
             }
+            if let editingRecord {
+                context.delete(editingRecord)
+            }
             existing.apply(m)
             record = existing
+        } else if let editingRecord {
+            editingRecord.apply(m)
+            record = editingRecord
         } else {
             record = BodyRecord(measurement: m)
             context.insert(record)
@@ -176,6 +200,10 @@ struct ConfirmView: View {
         Task {
             defer { isSaving = false }
             do {
+                // 編集で日時を変えた場合は、元の日時でヘルスケアに書いた値を消してから書き直す。
+                if let originalMeasuredAt, originalMeasuredAt != target {
+                    try await HealthKitWriter.shared.delete(measuredAt: originalMeasuredAt)
+                }
                 try await HealthKitWriter.shared.write(m)
                 record.healthKitSynced = true
                 try? context.save()
@@ -184,5 +212,12 @@ struct ConfirmView: View {
                 healthKitError = error.localizedDescription
             }
         }
+    }
+}
+
+extension ConfirmView {
+    /// 保存済みの記録を編集する。
+    init(editing record: BodyRecord) {
+        self.init(parsed: record.measurement, editing: record)
     }
 }

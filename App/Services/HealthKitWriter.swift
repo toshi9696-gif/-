@@ -21,6 +21,26 @@ final class HealthKitWriter {
         try await store.requestAuthorization(toShare: shareTypes, read: [])
     }
 
+    /// このアプリが指定日時の測定として書き込んだ値をヘルスケアから消す。
+    func delete(measuredAt date: Date) async throws {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        for identifier in Self.writtenIdentifiers {
+            let predicate = HKQuery.predicateForObjects(
+                withMetadataKey: HKMetadataKeySyncIdentifier,
+                allowedValues: [Self.syncID(date, identifier)]
+            )
+            _ = try await store.deleteObjects(of: HKQuantityType(identifier), predicate: predicate)
+        }
+    }
+
+    private static let writtenIdentifiers: [HKQuantityTypeIdentifier] = [
+        .bodyMass, .bodyFatPercentage, .leanBodyMass, .bodyMassIndex, .height,
+    ]
+
+    private static func syncID(_ date: Date, _ identifier: HKQuantityTypeIdentifier) -> String {
+        "tanita-\(Int(date.timeIntervalSince1970))-\(identifier.rawValue)"
+    }
+
     func write(_ m: BodyMeasurement) async throws {
         guard HKHealthStore.isHealthDataAvailable(), let date = m.measuredAt else { return }
         try await requestAuthorization()
@@ -30,7 +50,7 @@ final class HealthKitWriter {
         var samples: [HKQuantitySample] = []
         func add(_ identifier: HKQuantityTypeIdentifier, _ value: Double?, _ unit: HKUnit) {
             guard let value else { return }
-            let syncID = "tanita-\(Int(date.timeIntervalSince1970))-\(identifier.rawValue)"
+            let syncID = Self.syncID(date, identifier)
             samples.append(HKQuantitySample(
                 type: HKQuantityType(identifier),
                 quantity: HKQuantity(unit: unit, doubleValue: value),

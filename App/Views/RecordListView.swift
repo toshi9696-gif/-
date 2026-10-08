@@ -4,18 +4,27 @@ import SwiftUI
 struct RecordListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \BodyRecord.measuredAt, order: .reverse) private var records: [BodyRecord]
+    @State private var editing: BodyRecord?
 
     var body: some View {
         List {
             ForEach(records) { record in
-                RecordRow(record: record)
+                Button { editing = record } label: {
+                    RecordRow(record: record)
+                }
+                .tint(.primary)
             }
             .onDelete { offsets in
-                // ヘルスケアに書き込んだデータは消えない（ヘルスケア側で削除する）。
                 for index in offsets {
+                    let date = records[index].measuredAt
                     context.delete(records[index])
+                    // このアプリがヘルスケアに書き込んだ値も消す。
+                    Task { try? await HealthKitWriter.shared.delete(measuredAt: date) }
                 }
             }
+        }
+        .sheet(item: $editing) { record in
+            ConfirmView(editing: record)
         }
         .overlay {
             if records.isEmpty {
@@ -24,6 +33,14 @@ struct RecordListView: View {
                     systemImage: "doc.text.viewfinder",
                     description: Text("右上のカメラボタンからレシートを撮影してください")
                 )
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if !records.isEmpty {
+                Text("記録をタップすると修正、左にスワイプすると削除できます")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 8)
             }
         }
     }

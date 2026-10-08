@@ -4,11 +4,31 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(SettingsKey.birthdayEnabled) private var birthdayEnabled = false
     @AppStorage(SettingsKey.birthday) private var birthdayInterval: Double = 0
+    @AppStorage(SettingsKey.goalVisceral) private var goalVisceral = GoalDefaults.visceral
+    @AppStorage(SettingsKey.goalMuscleFloor) private var goalMuscleFloor = GoalDefaults.muscleFloor
+    @AppStorage(SettingsKey.goalDeadline) private var goalDeadline = GoalDefaults.deadline
     @State private var healthMessage: String?
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Stepper(value: $goalVisceral, in: 1...30, step: 1) {
+                        LabeledContent("内臓脂肪レベル", value: "\(Int(goalVisceral)) 以下")
+                    }
+                    Stepper(value: $goalMuscleFloor, in: 30...80, step: 0.5) {
+                        LabeledContent("筋肉量の下限", value: String(format: "%.1f kg", goalMuscleFloor))
+                    }
+                    DatePicker("期限", selection: Binding(
+                        get: { Date(timeIntervalSince1970: goalDeadline) },
+                        set: { goalDeadline = $0.timeIntervalSince1970 }
+                    ), displayedComponents: .date)
+                } header: {
+                    Text("目標")
+                } footer: {
+                    Text("内臓脂肪レベルは、週ごとの中央値が2週連続で目標以下になったら達成とみなします。")
+                }
+
                 Section {
                     Toggle("誕生日を使う", isOn: $birthdayEnabled)
                     if birthdayEnabled {

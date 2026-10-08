@@ -12,33 +12,39 @@ struct RootView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        NavigationStack {
-            RecordListView()
-                .navigationTitle("体組成ログ")
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                    }
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        PhotosPicker(selection: $photoItem, matching: .images) {
-                            Image(systemName: "photo")
-                        }
-                        Button { showScanner = true } label: { Image(systemName: "camera") }
-                            .disabled(!VNDocumentCameraViewController.isSupported)
-                    }
-                }
-                .overlay {
-                    if isProcessing {
-                        ProgressView("読み取り中…")
-                            .padding()
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    }
-                }
+        TabView {
+            NavigationStack {
+                HomeView()
+                    .navigationTitle("ホーム")
+                    .toolbar { mainToolbar }
+            }
+            .tabItem { Label("ホーム", systemImage: "house") }
+
+            NavigationStack {
+                ChartsView()
+                    .navigationTitle("グラフ")
+                    .toolbar { mainToolbar }
+            }
+            .tabItem { Label("グラフ", systemImage: "chart.xyaxis.line") }
+
+            NavigationStack {
+                RecordListView()
+                    .navigationTitle("記録")
+                    .toolbar { mainToolbar }
+            }
+            .tabItem { Label("記録", systemImage: "list.bullet") }
+        }
+        .overlay {
+            if isProcessing {
+                ProgressView("読み取り中…")
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }
         }
         .fullScreenCover(isPresented: $showScanner) {
             DocumentScanner { images in
                 showScanner = false
-                // M1 では1枚目だけを処理する。複数枚の連続取り込みは M2 で対応する。
+                // 1回の撮影で読み取るのは1枚目のレシートだけ。
                 if let first = images.first { process(first) }
             } onCancel: {
                 showScanner = false
@@ -61,6 +67,21 @@ struct RootView: View {
             Button("OK") {}
         } message: {
             Text(errorMessage ?? "")
+        }
+    }
+
+    /// どのタブからでも撮影・写真の取り込み・設定ができるようにする。
+    @ToolbarContentBuilder
+    private var mainToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button { showSettings = true } label: { Image(systemName: "gearshape") }
+        }
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            PhotosPicker(selection: $photoItem, matching: .images) {
+                Image(systemName: "photo")
+            }
+            Button { showScanner = true } label: { Image(systemName: "camera") }
+                .disabled(!VNDocumentCameraViewController.isSupported)
         }
     }
 

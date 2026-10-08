@@ -47,4 +47,39 @@ final class BodyRecord {
         healthKitSynced = false
         updatedAt = Date()
     }
+
+    func value(_ field: ReceiptField) -> Double? {
+        switch field {
+        case .age: age
+        case .height: height
+        case .clothes: clothes
+        case .weight: weight
+        case .fatPercent: fatPercent
+        case .fatMass: fatMass
+        case .leanMass: leanMass
+        case .muscleMass: muscleMass
+        case .boneMass: boneMass
+        case .bmr: bmr
+        case .visceralLevel: visceralLevel
+        case .legScore: legScore
+        case .bmi: bmi
+        }
+    }
+
+    var measurement: BodyMeasurement {
+        var m = BodyMeasurement(measuredAt: measuredAt, bodyType: bodyType)
+        for field in ReceiptField.allCases {
+            m[field] = value(field)
+        }
+        return m
+    }
+}
+
+extension Array where Element == BodyRecord {
+    /// 指定した項目の値を、グラフや傾向の計算に使う形に変換する。
+    func points(_ field: ReceiptField) -> [DataPoint] {
+        compactMap { record in
+            record.value(field).map { DataPoint(date: record.measuredAt, value: $0) }
+        }
+    }
 }
