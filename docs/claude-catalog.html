@@ -1,0 +1,265 @@
+<title>Claude スキル＆ルール台帳</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; sticky search bar; rule table then skill list grouped by category */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1b2230;
+  --muted: #5b6577;
+  --line: #dde1e8;
+  --accent: #2f5bd3;
+  --accent-soft: #e6ecfb;
+  --own: #0f7a5c;
+  --own-soft: #e1f3ec;
+  --todo: #9a5b00;
+  --todo-soft: #fbf0dc;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1a2029; --fg: #e5e9f0; --muted: #9aa4b5; --line: #2c3442;
+    --accent: #8aa8ff; --accent-soft: #232f4d; --own: #5fd1a8; --own-soft: #173b30;
+    --todo: #f0b960; --todo-soft: #3a2c14; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a2029; --fg: #e5e9f0; --muted: #9aa4b5; --line: #2c3442;
+  --accent: #8aa8ff; --accent-soft: #232f4d; --own: #5fd1a8; --own-soft: #173b30;
+  --todo: #f0b960; --todo-soft: #3a2c14; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.7;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+header h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 900; margin: 0; line-height: 1.3; text-wrap: balance; letter-spacing: .01em; }
+header p { color: var(--muted); margin: 8px 0 0; max-width: 62ch; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--fg); font-size: 18px; margin-right: 4px; }
+h2 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+.lede { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+code, .mono { font-family: var(--font-mono); font-size: .88em; }
+
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: 0; }
+.pill { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 99px; white-space: nowrap; font-weight: 500; }
+.pill.none { background: var(--todo-soft); color: var(--todo); }
+.pill.done { background: var(--own-soft); color: var(--own); }
+.pill.env { background: var(--accent-soft); color: var(--accent); }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.search { width: 100%; font: inherit; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); }
+.search:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.chip .n { color: var(--muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] .n { color: inherit; opacity: .7; }
+
+.group { margin-top: 28px; }
+.group h3 { font-size: 15px; font-weight: 700; margin: 0 0 10px; display: flex; align-items: baseline; gap: 8px; }
+.group h3 .n { color: var(--muted); font-weight: 400; font-size: 13px; }
+.list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.item { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 4px 20px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.item:last-child { border-bottom: 0; }
+.item.own { box-shadow: inset 3px 0 0 var(--own); }
+.name { font-family: var(--font-mono); font-size: 13px; font-weight: 500; word-break: break-all; }
+.name .src { display: block; font-family: var(--font-body); font-size: 11px; color: var(--muted); font-weight: 400; letter-spacing: .03em; }
+.desc { min-width: 0; }
+.use { color: var(--muted); font-size: 13px; }
+.empty { color: var(--muted); padding: 24px 0; }
+
+.howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.howto div { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--surface); min-width: 0; }
+.howto h4 { margin: 0 0 6px; font-size: 14px; }
+.howto p { margin: 0; font-size: 13px; color: var(--muted); }
+footer { color: var(--muted); font-size: 12px; }
+@media (max-width: 560px) { .item { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Claude スキル＆ルール台帳</h1>
+    <p>Claude Code（リポジトリ <span class="mono">toshi9696-gif/-</span>）で使えるルールの仕組みとスキルをまとめた一覧です。Cursor・ChatGPT から移行した自作スキル 7 件も含みます。</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <section aria-labelledby="h-rules">
+    <h2 id="h-rules">ルール</h2>
+    <p class="lede">Claude の振る舞いを常に制御する設定ファイルです。「状態」はこのリポジトリでの現状です。</p>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>種類</th><th>置き場所</th><th>役割</th><th>適用範囲</th><th>状態</th></tr></thead>
+        <tbody id="rules"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-skills">
+    <h2 id="h-skills">スキル</h2>
+    <p class="lede">特定の作業向けの手順をまとめたものです。<code>/スキル名</code> で呼び出すか、依頼内容に合わせて Claude が自動で使います。緑の線は自作スキルです。</p>
+    <div class="bar">
+      <input class="search" id="q" type="search" placeholder="スキル名・内容で絞り込む（例：レポート、PDF、テスト）" aria-label="スキルを検索">
+      <div class="chips" id="chips" role="group" aria-label="カテゴリで絞り込む"></div>
+    </div>
+    <div id="groups"></div>
+  </section>
+
+  <section aria-labelledby="h-howto">
+    <h2 id="h-howto">自作スキルを他の環境で使う</h2>
+    <p class="lede">自作スキルは現在このリポジトリの <code>.claude/skills/</code> にあり、このリポジトリを開いた Claude Code で使えます。</p>
+    <div class="howto">
+      <div><h4>Mac の Claude Code（全プロジェクト）</h4><p><code>.claude/skills/</code> の各フォルダを <code>~/.claude/skills/</code> にコピーします。</p></div>
+      <div><h4>claude.ai・デスクトップアプリ</h4><p>設定 → 機能 → スキル から <code>dist/claude-skills/</code> の ZIP を1つずつアップロードします。</p></div>
+      <div><h4>中身の調整</h4><p>元の Cursor／ChatGPT 版の詳しい指示がある場合は、各 <code>SKILL.md</code> に追記すると精度が上がります。</p></div>
+    </div>
+  </section>
+
+  <footer>2026年10月18日時点のクラウドセッション環境をもとに作成。使えるスキルはアカウント、有効なプラグイン、利用環境（CLI／デスクトップ／Web）によって変わります。</footer>
+</div>
+
+<script>
+const RULES = [
+  ["プロジェクトメモリ", "./CLAUDE.md", "コーディング規約やビルド・テスト手順など、毎回読み込まれる指示", "プロジェクト全員", "none"],
+  ["ローカルメモリ", "./CLAUDE.local.md", "個人用のプロジェクト固有メモ（git 管理外）", "自分のみ", "none"],
+  ["ユーザーメモリ", "~/.claude/CLAUDE.md", "全プロジェクト共通の個人ルール", "自分の全プロジェクト", "none"],
+  ["ルールファイル", "./.claude/rules/*.md", "トピック別・パス別に分けたルール。frontmatter の paths で対象ファイルを限定できる", "プロジェクト全員", "none"],
+  ["プロジェクトスキル", "./.claude/skills/*/SKILL.md", "プロジェクト固有のスキル", "プロジェクト全員", "done:7件作成済み"],
+  ["権限ルール", ".claude/settings.json → permissions", "ツールやコマンドの実行を許可・確認・禁止する", "プロジェクト／ユーザー", "none"],
+  ["フック", ".claude/settings.json → hooks", "「〜の前後に必ず〜する」自動処理（SessionStart、PreToolUse、Stop など）", "プロジェクト／ユーザー", "env:環境側に Stop フックあり"],
+  ["環境変数", ".claude/settings.json → env", "セッションに渡す環境変数", "プロジェクト／ユーザー", "none"],
+];
+
+const CATS = [
+  ["own", "自作（Cursor・ChatGPT から移行）"],
+  ["dev", "開発・Claude Code 設定"],
+  ["viz", "Artifact・可視化"],
+  ["file", "ドキュメント・ファイル形式"],
+  ["write", "文章作成・要約・整理"],
+  ["life", "生活・スケジュール"],
+  ["browser", "ブラウザ・PC 操作"],
+  ["meta", "スキル・プラグイン管理"],
+];
+
+// [name, source, category, description, when to use]
+const SKILLS = [
+  ["ut-setup", "自作", "own", "ユーザーテストの環境設定・計画（00_plan.md）", "「UTの準備」「テスト計画を立てて」"],
+  ["ut-scenario", "自作", "own", "テストシナリオ・タスク・質問の作成と更新（01_scenario.md）", "「テストシナリオ作って」"],
+  ["ut-moderator", "自作", "own", "テストの進行支援と観察結果の記録（02_sessions/P*.md）", "「観察メモを記録にまとめて」"],
+  ["ut-analysis", "自作", "own", "テスト結果の分析とレポート作成（03_report.md）", "「UTレポート作って」"],
+  ["ut-learning", "自作", "own", "ユーザーテスト・UX・UI の学習サポート", "「UXを勉強したい」"],
+  ["ut-shared", "自作", "own", "ut-* スキル共通のルール（用語・ファイル配置・記録形式・倫理）", "他の ut-* スキルから参照"],
+  ["writing-presentations", "自作", "own", "プレゼン・発表の読み上げ原稿の作成", "「発表原稿を作って」"],
+
+  ["init", "組み込み", "dev", "コードベースを解析して CLAUDE.md を作成", "プロジェクトの初期設定"],
+  ["code-review", "組み込み", "dev", "差分・PR のバグレビュー。effort 指定、--comment／--fix に対応", "PR レビュー"],
+  ["simplify", "組み込み", "dev", "変更コードの再利用・簡素化・効率化を見直して修正", "リファクタリング"],
+  ["security-review", "組み込み", "dev", "現在のブランチの変更をセキュリティ観点でレビュー", "セキュリティ確認"],
+  ["run", "組み込み", "dev", "アプリを起動・操作して変更の動作を確認", "動作確認・スクリーンショット"],
+  ["claude-api", "組み込み", "dev", "Claude API／Anthropic SDK のリファレンス（モデル ID、料金、ツール使用など）", "Claude API を使う開発"],
+  ["update-config", "組み込み", "dev", "settings.json（権限・フック・環境変数）の設定", "「〜したら毎回〜して」の自動化"],
+  ["fewer-permission-prompts", "組み込み", "dev", "よく使う読み取り系コマンドを許可リストに追加", "確認プロンプトを減らす"],
+  ["keybindings-help", "組み込み", "dev", "キーボードショートカットのカスタマイズ", "キー割り当ての変更"],
+  ["session-start-hook", "組み込み", "dev", "クラウドセッション用の SessionStart フックを作成", "テスト・リンタ環境の準備"],
+  ["loop", "組み込み", "dev", "プロンプトやコマンドを一定間隔で繰り返し実行", "定期チェック"],
+  ["plugin-authoring", "組み込み", "dev", "パネル、ステータスライン、スラッシュコマンド、フックなどの mod を作成", "Claude Code の拡張"],
+
+  ["artifact-design", "組み込み", "viz", "Artifact（Web ページ）作成時のデザイン指針", "Artifact 作成前"],
+  ["artifact-diagramming", "組み込み", "viz", "図解の考え方とインライン SVG の作り方", "図・ダイアグラム"],
+  ["artifact-capabilities", "組み込み", "viz", "Artifact の実行時機能（共有状態、データ連携、ファイル保存など）", "動きのある Artifact"],
+  ["dataviz", "組み込み", "viz", "グラフ・チャート・ダッシュボードのデザインと配色", "データ可視化全般"],
+
+  ["docs", "anthropic-skills", "file", "共有・コメントできる Claude Docs を作成（Word／PDF／Markdown へ書き出し可）", "文書全般"],
+  ["docx", "anthropic-skills", "file", "Word ファイル（.docx／.dotx）の作成・編集", "Word 形式を指定したとき"],
+  ["pdf", "anthropic-skills", "file", "PDF の読み取り・結合・分割・作成・フォーム入力・OCR", "PDF の操作"],
+  ["pptx", "anthropic-skills", "file", "PowerPoint（.pptx／.potx）の作成・編集・読み取り", "PowerPoint 形式を指定したとき"],
+  ["xlsx", "anthropic-skills", "file", "Excel・CSV・TSV の作成・編集・整形", "スプレッドシート"],
+  ["google-workspace", "anthropic-skills", "file", "Google ドキュメント・スプレッドシート・スライドの作成と編集", "Google ファイルの操作"],
+  ["qa-pptx-generator", "anthropic-skills", "file", "テンプレートから4択クイズと解説スライドを PPTX で生成", "クイズ作成"],
+
+  ["summarizer", "anthropic-skills", "write", "3行要約 → 原則 → 具体例 の3層で要約", "「要約して」"],
+  ["notes-to-onepager", "anthropic-skills", "write", "雑多なメモを A4 一枚（結論→やること→経緯→要確認）に清書", "「1枚にまとめて」"],
+  ["research-organizer", "anthropic-skills", "write", "複数の URL・資料・メモを 要点→比較→結論 に整理", "「リサーチ整理して」"],
+  ["deep-research", "anthropic-skills", "write", "複数の情報源を調べて包括的なレポートを作成", "本格的な調査"],
+  ["blog-post-writer", "anthropic-skills", "write", "文字起こしやメモからブログ記事を作成", "「ブログ記事書いて」"],
+  ["proposal-drafter", "anthropic-skills", "write", "要件から提案書のドラフトを作成", "「提案書作って」"],
+  ["customer-reply", "anthropic-skills", "write", "顧客・取引先への返信文面を作成", "「返信作って」"],
+  ["checklist-maker", "anthropic-skills", "write", "作業の説明を手順書＋品質チェックリストに変換", "「チェックリスト化して」"],
+  ["weekly-report", "anthropic-skills", "write", "1週間の活動メモから週次活動報告書を作成", "「週報を作って」"],
+
+  ["morning", "anthropic-skills", "life", "朝のブリーフィングを表示、または平日の定期タスクとして設定", "/morning"],
+  ["schedule-screenshot-register", "anthropic-skills", "life", "予定のスクショを読み取り、移動・準備時間込みで Google カレンダーに登録", "予定のスクショを送ったとき"],
+  ["weekend-dinner-planner", "anthropic-skills", "life", "土日の夕食献立・買い物リスト・段取り・カレンダー登録", "「今週末の献立」"],
+  ["weekly-side-prep", "anthropic-skills", "life", "平日の副菜・弁当用の作り置き（5〜6品）を計画", "「今週の作り置き」"],
+
+  ["built-in-browser", "anthropic-skills", "browser", "Claude デスクトップアプリ内蔵ブラウザの使い方", "内蔵ブラウザの操作"],
+  ["chrome-browser", "anthropic-skills", "browser", "Claude in Chrome 拡張機能の使い方", "自分の Chrome での操作"],
+  ["computer-use", "anthropic-skills", "browser", "デスクトップのスクリーンショット取得・クリック・入力", "PC 上のアプリ操作"],
+
+  ["skill-creator", "anthropic-skills", "meta", "スキルの新規作成・改良・評価", "自作スキルづくり"],
+  ["import-memory", "anthropic-skills", "meta", "他の AI アシスタントのメモリを Claude に取り込む", "メモリの移行"],
+  ["create-cowork-plugin", "cowork-plugin-management", "meta", "Cowork 用プラグインをゼロから作成", "プラグイン作成"],
+  ["cowork-plugin-customizer", "cowork-plugin-management", "meta", "既存プラグインを組織のツール・業務向けに調整", "プラグインの調整"],
+];
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+document.getElementById("rules").innerHTML = RULES.map(([k, p, r, s, st]) => {
+  const [kind, label] = st.split(":");
+  const pill = kind === "none" ? '<span class="pill none">未作成</span>' : `<span class="pill ${kind}">${esc(label)}</span>`;
+  return `<tr><td>${esc(k)}</td><td><code>${esc(p)}</code></td><td>${esc(r)}</td><td>${esc(s)}</td><td>${pill}</td></tr>`;
+}).join("");
+
+const ownCount = SKILLS.filter(s => s[2] === "own").length;
+document.getElementById("stats").innerHTML =
+  `<span><b>${SKILLS.length}</b>スキル</span><span><b>${ownCount}</b>自作スキル</span><span><b>${RULES.length}</b>ルールの種類</span>`;
+
+let cat = "all";
+try { cat = localStorage.getItem("cat") || "all"; } catch (e) {}
+if (cat !== "all" && !CATS.some(c => c[0] === cat)) cat = "all";
+
+const chips = document.getElementById("chips");
+function renderChips() {
+  const all = [["all", "すべて", SKILLS.length], ...CATS.map(([id, l]) => [id, l, SKILLS.filter(s => s[2] === id).length])];
+  chips.innerHTML = all.map(([id, l, n]) =>
+    `<button class="chip" type="button" data-cat="${id}" aria-pressed="${id === cat}">${esc(l)}<span class="n">${n}</span></button>`).join("");
+}
+chips.addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  cat = b.dataset.cat;
+  try { localStorage.setItem("cat", cat); } catch (err) {}
+  renderChips(); render();
+});
+
+const q = document.getElementById("q");
+q.addEventListener("input", render);
+
+function render() {
+  const term = q.value.trim().toLowerCase();
+  const hit = s => !term || s.join(" ").toLowerCase().includes(term);
+  const html = CATS.filter(([id]) => cat === "all" || cat === id).map(([id, label]) => {
+    const rows = SKILLS.filter(s => s[2] === id && hit(s));
+    if (!rows.length) return "";
+    return `<div class="group"><h3>${esc(label)}<span class="n">${rows.length}件</span></h3><ul class="list">` +
+      rows.map(([n, src, c, d, u]) =>
+        `<li class="item${c === "own" ? " own" : ""}"><div class="name">${esc(n)}<span class="src">${esc(src)}</span></div>` +
+        `<div class="desc">${esc(d)}<div class="use">使用場面：${esc(u)}</div></div></li>`).join("") +
+      `</ul></div>`;
+  }).join("");
+  document.getElementById("groups").innerHTML = html || '<p class="empty">該当するスキルがありません。別の言葉で検索してみてください。</p>';
+}
+renderChips(); render();
+</script>

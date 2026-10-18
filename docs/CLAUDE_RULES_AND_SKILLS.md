@@ -17,6 +17,7 @@ Claude Code における「ルール」は、Claude の振る舞いを恒常的�
 | ローカルメモリ (`CLAUDE.local.md`) | リポジトリ直下（git管理外） | 個人用のプロジェクト固有メモ | 自分のみ | 未作成 |
 | ユーザーメモリ | `~/.claude/CLAUDE.md` | 全プロジェクト共通の個人ルール | 自分の全プロジェクト | 未作成 |
 | ルールファイル (`.claude/rules/*.md`) | `./.claude/rules/` | トピック別・パス別に分割したルール（frontmatter の `paths` で対象ファイルを限定可能） | プロジェクト全員 | 未作成 |
+| プロジェクトスキル (`.claude/skills/*/SKILL.md`) | `./.claude/skills/` | プロジェクト固有のスキル | プロジェクト全員 | **7件作成済み**（下記 2-0） |
 | 権限ルール (`permissions`) | `.claude/settings.json` の `allow` / `ask` / `deny` | ツールやコマンドの実行許可・確認・禁止 | プロジェクト / ユーザー | 未作成 |
 | フック (`hooks`) | `.claude/settings.json` の `hooks` | 「〜の前後に必ず〜する」等の自動処理（SessionStart, PreToolUse, PostToolUse, Stop など） | プロジェクト / ユーザー | 未作成（環境側に Stop フックあり） |
 | 環境変数 (`env`) | `.claude/settings.json` の `env` | セッションに渡す環境変数 | プロジェクト / ユーザー | 未作成 |
@@ -35,6 +36,20 @@ Claude Code における「ルール」は、Claude の振る舞いを恒常的�
 ## 2. Skill（スキル）
 
 スキルは、特定タスク向けの手順・知識をまとめたパッケージです。`/<スキル名>` で明示的に呼び出すか、依頼内容に応じて Claude が自動で使用します。
+
+### 2-0. 自作スキル（Cursor / ChatGPT から移行）
+
+このリポジトリの `.claude/skills/` に置いた独自スキルです。claude.ai 用の ZIP は `dist/claude-skills/` にあります。
+
+| スキル名 | 概要 | 主な使用場面 |
+|---|---|---|
+| `ut-setup` | ユーザーテストの環境設定・計画（00_plan.md） | 「UTの準備」「テスト計画を立てて」 |
+| `ut-scenario` | テストシナリオ・タスク・質問の作成・更新（01_scenario.md） | 「テストシナリオ作って」 |
+| `ut-moderator` | テストの進行支援・観察結果の記録（02_sessions/P*.md） | 「観察メモを記録にまとめて」 |
+| `ut-analysis` | テスト結果の分析・レポート作成（03_report.md） | 「UTレポート作って」 |
+| `ut-learning` | ユーザーテスト・UX・UI の学習サポート | 「UXを勉強したい」 |
+| `ut-shared` | ut-* スキル共通のルール（用語・ファイル配置・記録形式・倫理） | 他の ut-* スキルから参照 |
+| `writing-presentations` | プレゼン・発表の読み上げ原稿の作成 | 「発表原稿を作って」 |
 
 ### 2-1. 開発・Claude Code 設定系
 
@@ -119,4 +134,7 @@ Claude Code における「ルール」は、Claude の振る舞いを恒常的�
 ## 補足
 
 - スキル一覧はアカウントや有効化しているプラグイン、セッション種別（CLI / デスクトップ / Web）によって変わります。
+- 自作スキルを他の場所でも使う方法：
+  - **Claude Code（Mac の全プロジェクト）**：`.claude/skills/` の各フォルダを `~/.claude/skills/` にコピー
+  - **claude.ai / Claude デスクトップアプリ**：設定 → 機能（Capabilities）→ スキル で `dist/claude-skills/*.zip` をアップロード
 - このリポジトリにはまだ `CLAUDE.md` や `.claude/rules/` がありません。Swift のビルド・テスト手順（`BodyCompCore` の `swift test` など）を `/init` で `CLAUDE.md` にまとめておくと、今後のセッションで Claude がプロジェクトを理解しやすくなります。
