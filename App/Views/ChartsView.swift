@@ -26,6 +26,7 @@ struct ChartsView: View {
     @Query(sort: \BodyRecord.measuredAt) private var records: [BodyRecord]
     @AppStorage(SettingsKey.goalVisceral) private var goalVisceral = GoalDefaults.visceral
     @AppStorage(SettingsKey.goalMuscleFloor) private var goalMuscleFloor = GoalDefaults.muscleFloor
+    @AppStorage(SettingsKey.goalWaist) private var goalWaist = GoalDefaults.waist
     @AppStorage(SettingsKey.birthdayEnabled) private var birthdayEnabled = false
     @AppStorage(SettingsKey.birthday) private var birthdayInterval: Double = 0
 
@@ -70,7 +71,7 @@ struct ChartsView: View {
         switch field {
         case .visceralLevel: ("目標", goalVisceral)
         case .muscleMass: ("下限", goalMuscleFloor)
-        case .waist: ("目安", 85)
+        case .waist: ("目標", goalWaist)
         default: nil
         }
     }

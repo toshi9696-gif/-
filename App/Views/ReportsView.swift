@@ -11,6 +11,7 @@ struct ReportsView: View {
     @AppStorage(SettingsKey.goalVisceral) private var goalVisceral = GoalDefaults.visceral
     @AppStorage(SettingsKey.goalMuscleFloor) private var goalMuscleFloor = GoalDefaults.muscleFloor
     @AppStorage(SettingsKey.goalDeadline) private var goalDeadline = GoalDefaults.deadline
+    @AppStorage(SettingsKey.goalWaist) private var goalWaist = GoalDefaults.waist
     @AppStorage(SettingsKey.reportNotes) private var reportNotes = GoalDefaults.reportNotes
 
     @State private var isGenerating = false
@@ -77,6 +78,7 @@ struct ReportsView: View {
             age: records.last?.age.map { Int($0) },
             goalVisceral: goalVisceral,
             goalMuscle: goalMuscleFloor,
+            goalWaist: goalWaist,
             deadline: Date(timeIntervalSince1970: goalDeadline),
             zone2Range: activity.zone2Range,
             vo2Max: activity.vo2Max,

@@ -8,6 +8,7 @@ struct HomeView: View {
     @Query(sort: \BodyRecord.measuredAt) private var records: [BodyRecord]
     @AppStorage(SettingsKey.goalVisceral) private var goalVisceral = GoalDefaults.visceral
     @AppStorage(SettingsKey.goalMuscleFloor) private var goalMuscleFloor = GoalDefaults.muscleFloor
+    @AppStorage(SettingsKey.goalWaist) private var goalWaist = GoalDefaults.waist
     @AppStorage(SettingsKey.goalDeadline) private var goalDeadline = GoalDefaults.deadline
     @Environment(ActivityModel.self) private var activity
 
@@ -27,7 +28,7 @@ struct HomeView: View {
                         goal: goalVisceral,
                         deadline: Date(timeIntervalSince1970: goalDeadline)
                     )
-                    WaistCard(points: records.points(.waist))
+                    WaistCard(points: records.points(.waist), goal: goalWaist)
                     WeightCard(points: records.points(.weight))
                     MuscleCard(points: records.points(.muscleMass), floor: goalMuscleFloor)
                     ActivityCard(model: activity)
@@ -121,9 +122,8 @@ private struct VisceralCard: View {
 
 private struct WaistCard: View {
     let points: [DataPoint]
-
-    /// 日本の健診（特定健診）で、男性の内臓脂肪の多さの目安とされる腹囲。
-    private let reference = 85.0
+    /// 目標の腹囲（この値未満）。
+    let goal: Double
 
     var body: some View {
         Card(title: "腹囲", systemImage: "ruler") {
@@ -133,29 +133,36 @@ private struct WaistCard: View {
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text("目安 \(Int(reference)) cm 未満")
+                        Text(String(format: "目標 %.1f cm 未満", goal))
                         if points.count > 1 {
                             Text("開始時から \(signed(latest.value - first.value)) cm").foregroundStyle(.secondary)
                         }
                     }
                     .font(.subheadline)
                 }
+                if latest.value < goal {
+                    Label("目標を下回っています", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Text(String(format: "目標まであと %.1f cm", latest.value - goal))
+                        .foregroundStyle(.orange)
+                }
                 if points.count >= 2 {
-                    let values = points.map(\.value) + [reference]
+                    let values = points.map(\.value) + [goal]
                     Chart {
                         ForEach(points, id: \.date) { point in
                             LineMark(x: .value("日付", point.date), y: .value("cm", point.value))
                             PointMark(x: .value("日付", point.date), y: .value("cm", point.value))
                         }
-                        RuleMark(y: .value("目安", reference))
-                            .foregroundStyle(.orange)
+                        RuleMark(y: .value("目標", goal))
+                            .foregroundStyle(.green)
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     }
                     .chartYScale(domain: ChartScale.yDomain(values, minimumSpan: 4))
                     .chartXAxis { ChartScale.dateAxis }
                     .frame(height: 120)
                 }
-                Text("腹囲は内臓脂肪の量とよく連動します。週1回、同じ条件で測りましょう。")
+                Text("腹囲は内臓脂肪の量とよく連動します（男性は 85cm 以上が内臓脂肪の多い目安）。週1回、同じ条件で測りましょう。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {

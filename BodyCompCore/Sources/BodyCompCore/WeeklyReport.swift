@@ -5,6 +5,7 @@ public struct WeeklyReportInput: Codable, Equatable, Sendable {
     public struct Goals: Codable, Equatable, Sendable {
         public var visceralLevelAtMost: Double
         public var muscleMassKgAtLeast: Double
+        public var waistCmBelow: Double?
         public var deadline: String
         public var daysLeft: Int
     }
@@ -63,6 +64,7 @@ public enum WeeklyReportBuilder {
         age: Int?,
         goalVisceral: Double,
         goalMuscle: Double,
+        goalWaist: Double? = nil,
         deadline: Date,
         zone2Range: ClosedRange<Double>?,
         vo2Max: Double?,
@@ -132,6 +134,7 @@ public enum WeeklyReportBuilder {
             goals: WeeklyReportInput.Goals(
                 visceralLevelAtMost: goalVisceral,
                 muscleMassKgAtLeast: goalMuscle,
+                waistCmBelow: goalWaist,
                 deadline: formatter.string(from: deadline),
                 daysLeft: max(0, daysLeft)
             ),

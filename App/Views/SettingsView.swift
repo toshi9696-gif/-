@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.birthday) private var birthdayInterval: Double = 0
     @AppStorage(SettingsKey.goalVisceral) private var goalVisceral = GoalDefaults.visceral
     @AppStorage(SettingsKey.goalMuscleFloor) private var goalMuscleFloor = GoalDefaults.muscleFloor
+    @AppStorage(SettingsKey.goalWaist) private var goalWaist = GoalDefaults.waist
     @AppStorage(SettingsKey.goalDeadline) private var goalDeadline = GoalDefaults.deadline
     @AppStorage(SettingsKey.zone2Manual) private var zone2Manual = false
     @AppStorage(SettingsKey.zone2Low) private var zone2Low = 120.0
@@ -26,6 +27,9 @@ struct SettingsView: View {
                     }
                     Stepper(value: $goalMuscleFloor, in: 30...80, step: 0.5) {
                         LabeledContent("筋肉量の下限", value: String(format: "%.1f kg", goalMuscleFloor))
+                    }
+                    Stepper(value: $goalWaist, in: 60...120, step: 0.5) {
+                        LabeledContent("腹囲", value: String(format: "%.1f cm 未満", goalWaist))
                     }
                     DatePicker("期限", selection: Binding(
                         get: { Date(timeIntervalSince1970: goalDeadline) },

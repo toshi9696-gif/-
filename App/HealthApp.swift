@@ -26,12 +26,15 @@ enum SettingsKey {
     static let zone2High = "zone2High"
     static let reportReminder = "reportReminder"
     static let reportNotes = "reportNotes"
+    static let goalWaist = "goalWaist"
 }
 
 /// 仕様書の目標（6か月で内臓脂肪レベル 9 以下、筋肉量 50.5kg 以上を維持）。設定画面で変更できる。
 enum GoalDefaults {
     static let visceral = 9.0
     static let muscleFloor = 50.5
+    /// 腹囲の目標（この値未満）。日本の健診で男性の内臓脂肪の多い目安とされる 85cm。
+    static let waist = 85.0
     static let reportNotes = "お酒は一滴も飲まない。食事量は少なめで、ご飯はお茶碗に軽く1杯程度。"
     static let deadline = Calendar.current.date(from: DateComponents(year: 2027, month: 3, day: 31))!
         .timeIntervalSince1970

@@ -25,13 +25,14 @@ final class WeeklyReportTests: XCTestCase {
         let deadline = calendar.date(from: DateComponents(year: 2027, month: 3, day: 31))!
 
         let input = WeeklyReportBuilder.make(
-            body: body, activity: [monday], age: 59, goalVisceral: 9, goalMuscle: 50.5,
+            body: body, activity: [monday], age: 59, goalVisceral: 9, goalMuscle: 50.5, goalWaist: 85,
             deadline: deadline, zone2Range: 120.4...130.4, vo2Max: 31.74, userNotes: "お酒は飲まない",
             today: date(10, 8, hour: 12), calendar: calendar
         )
 
         XCTAssertEqual(input.reportWeekStart, "2026-10-05")
         XCTAssertEqual(input.goals.daysLeft, 174)
+        XCTAssertEqual(input.goals.waistCmBelow, 85)
         XCTAssertEqual(input.bodyWeeks.count, 1)
         let week = try XCTUnwrap(input.bodyWeeks.first)
         XCTAssertEqual(week.measurementDays, 2)
