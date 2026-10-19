@@ -36,7 +36,7 @@ struct ChartsView: View {
     @State private var activityMetric: ActivityMetric = .zone2
 
     private let fields: [ReceiptField] = [
-        .visceralLevel, .weight, .fatPercent, .muscleMass, .fatMass, .bmr, .legScore, .bmi,
+        .visceralLevel, .waist, .weight, .fatPercent, .muscleMass, .fatMass, .bmr, .legScore, .bmi,
     ]
 
     /// 期間の始まり。「全期間」は最初の記録の日（記録がなければ活動データの最初の日）。
@@ -70,6 +70,7 @@ struct ChartsView: View {
         switch field {
         case .visceralLevel: ("目標", goalVisceral)
         case .muscleMass: ("下限", goalMuscleFloor)
+        case .waist: ("目安", 85)
         default: nil
         }
     }

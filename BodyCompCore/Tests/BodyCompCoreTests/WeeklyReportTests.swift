@@ -17,6 +17,7 @@ final class WeeklyReportTests: XCTestCase {
             .weight: [DataPoint(date: date(10, 5), value: 64.8), DataPoint(date: date(10, 7), value: 64.8)],
             .visceralLevel: [DataPoint(date: date(10, 5), value: 11), DataPoint(date: date(10, 7), value: 12)],
             .muscleMass: [DataPoint(date: date(10, 5), value: 50.8), DataPoint(date: date(10, 7), value: 50.8)],
+            .waist: [DataPoint(date: date(10, 6), value: 84.0)],
         ]
         var monday = DailyActivity(date: calendar.startOfDay(for: date(10, 5)))
         monday.steps = 9000
@@ -25,7 +26,7 @@ final class WeeklyReportTests: XCTestCase {
 
         let input = WeeklyReportBuilder.make(
             body: body, activity: [monday], age: 59, goalVisceral: 9, goalMuscle: 50.5,
-            deadline: deadline, zone2Range: 120.4...130.4, vo2Max: 31.74,
+            deadline: deadline, zone2Range: 120.4...130.4, vo2Max: 31.74, userNotes: "お酒は飲まない",
             today: date(10, 8, hour: 12), calendar: calendar
         )
 
@@ -37,6 +38,8 @@ final class WeeklyReportTests: XCTestCase {
         XCTAssertEqual(week.visceralLevelMedian, 11.5)
         XCTAssertEqual(week.weightKgAverage, 64.8)
         XCTAssertEqual(week.muscleMassKgAverage, 50.8)
+        XCTAssertEqual(week.waistCmAverage, 84.0)
+        XCTAssertEqual(input.userNotes, "お酒は飲まない")
         XCTAssertEqual(input.baselineWeek, week)
         XCTAssertEqual(input.activityWeeks.map(\.stepsPerDay), [9000])
         XCTAssertEqual(input.zone2RangeBpm, [120, 130])

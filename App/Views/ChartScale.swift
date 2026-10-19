@@ -24,6 +24,7 @@ extension ReceiptField {
     var chartMinimumSpan: Double {
         switch self {
         case .bmr: 60
+        case .waist: 4
         case .legScore: 10
         case .visceralLevel, .weight, .muscleMass, .fatMass, .leanMass, .fatPercent: 2
         default: 1

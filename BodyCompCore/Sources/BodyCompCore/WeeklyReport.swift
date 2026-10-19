@@ -17,6 +17,8 @@ public struct WeeklyReportInput: Codable, Equatable, Sendable {
         public var fatPercentAverage: Double?
         public var muscleMassKgAverage: Double?
         public var fatMassKgAverage: Double?
+        /// 腹囲（メジャーで手入力）。体組成計が使えない期間の内臓脂肪の目安にもなる。
+        public var waistCmAverage: Double?
     }
 
     public struct ActivityWeek: Codable, Equatable, Sendable {
@@ -50,6 +52,8 @@ public struct WeeklyReportInput: Codable, Equatable, Sendable {
     /// Zone2 の心拍範囲 [下限, 上限]。Zone2 はワークアウト中の心拍だけで数えている。
     public var zone2RangeBpm: [Int]?
     public var vo2Max: Double?
+    /// 利用者が設定画面で書いた、Claude に伝えておきたい生活の前提（飲酒・食事量など）。
+    public var userNotes: String?
 }
 
 public enum WeeklyReportBuilder {
@@ -62,6 +66,7 @@ public enum WeeklyReportBuilder {
         deadline: Date,
         zone2Range: ClosedRange<Double>?,
         vo2Max: Double?,
+        userNotes: String? = nil,
         today: Date,
         calendar: Calendar = .current
     ) -> WeeklyReportInput {
@@ -94,7 +99,8 @@ public enum WeeklyReportBuilder {
                 weightKgAverage: average(.weight),
                 fatPercentAverage: average(.fatPercent),
                 muscleMassKgAverage: average(.muscleMass),
-                fatMassKgAverage: average(.fatMass)
+                fatMassKgAverage: average(.fatMass),
+                waistCmAverage: average(.waist)
             )
         }
 
@@ -138,7 +144,8 @@ public enum WeeklyReportBuilder {
                 )
             },
             zone2RangeBpm: zone2Range.map { [Int($0.lowerBound.rounded()), Int($0.upperBound.rounded())] },
-            vo2Max: vo2Max.map(round1)
+            vo2Max: vo2Max.map(round1),
+            userNotes: userNotes.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
         )
     }
 

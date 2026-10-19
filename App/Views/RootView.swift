@@ -14,6 +14,7 @@ struct RootView: View {
 
     @State private var showScanner = false
     @State private var showSettings = false
+    @State private var showManualEntry = false
     @State private var photoItem: PhotosPickerItem?
     @State private var draft: ReceiptDraft?
     @State private var isProcessing = false
@@ -69,6 +70,9 @@ struct RootView: View {
         .sheet(item: $draft) { draft in
             ConfirmView(parsed: draft.measurement, rawRows: draft.rawRows)
         }
+        .sheet(isPresented: $showManualEntry) {
+            ManualEntryView()
+        }
         .sheet(isPresented: $showSettings, onDismiss: { Task { await reloadActivity() } }) {
             SettingsView()
         }
@@ -90,13 +94,15 @@ struct RootView: View {
         }
     }
 
-    /// どのタブからでも撮影・写真の取り込み・設定ができるようにする。
+    /// どのタブからでも撮影・写真の取り込み・手入力・設定ができるようにする。
     @ToolbarContentBuilder
     private var mainToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button { showSettings = true } label: { Image(systemName: "gearshape") }
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
+            Button { showManualEntry = true } label: { Image(systemName: "square.and.pencil") }
+                .accessibilityLabel("体重・腹囲を手入力")
             PhotosPicker(selection: $photoItem, matching: .images) {
                 Image(systemName: "photo")
             }

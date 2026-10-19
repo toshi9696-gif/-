@@ -2,7 +2,7 @@ import BodyCompCore
 import Foundation
 import HealthKit
 
-/// 体重・体脂肪率・除脂肪量・BMI（初回のみ身長）をヘルスケアに書き込む。
+/// 体重・体脂肪率・除脂肪量・BMI・腹囲（初回のみ身長）をヘルスケアに書き込む。
 /// 内臓脂肪レベルなど HealthKit に対応する型がない項目はアプリ内にだけ保存する。
 final class HealthKitWriter {
     static let shared = HealthKitWriter()
@@ -14,6 +14,7 @@ final class HealthKitWriter {
         HKQuantityType(.leanBodyMass),
         HKQuantityType(.bodyMassIndex),
         HKQuantityType(.height),
+        HKQuantityType(.waistCircumference),
     ]
 
     func requestAuthorization() async throws {
@@ -34,7 +35,7 @@ final class HealthKitWriter {
     }
 
     private static let writtenIdentifiers: [HKQuantityTypeIdentifier] = [
-        .bodyMass, .bodyFatPercentage, .leanBodyMass, .bodyMassIndex, .height,
+        .bodyMass, .bodyFatPercentage, .leanBodyMass, .bodyMassIndex, .height, .waistCircumference,
     ]
 
     private static func syncID(_ date: Date, _ identifier: HKQuantityTypeIdentifier) -> String {
@@ -64,6 +65,7 @@ final class HealthKitWriter {
         add(.bodyFatPercentage, m[.fatPercent].map { $0 / 100 }, .percent())
         add(.leanBodyMass, m[.leanMass], .gramUnit(with: .kilo))
         add(.bodyMassIndex, m[.bmi], .count())
+        add(.waistCircumference, m[.waist], .meterUnit(with: .centi))
 
         let defaults = UserDefaults.standard
         let writesHeight = !defaults.bool(forKey: SettingsKey.heightWrittenToHealth) && m[.height] != nil

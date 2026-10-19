@@ -24,7 +24,11 @@ struct RecordListView: View {
             }
         }
         .sheet(item: $editing) { record in
-            ConfirmView(editing: record)
+            if record.isManual {
+                ManualEntryView(editing: record)
+            } else {
+                ConfirmView(editing: record)
+            }
         }
         .overlay {
             if records.isEmpty {
@@ -54,6 +58,12 @@ private struct RecordRow: View {
             HStack {
                 Text(record.measuredAt, format: .dateTime.year().month().day().weekday().hour().minute())
                     .font(.subheadline)
+                if record.isManual {
+                    Text("手入力")
+                        .font(.caption)
+                        .padding(.horizontal, 6)
+                        .background(.quaternary, in: Capsule())
+                }
                 Spacer()
                 if record.healthKitSynced {
                     Image(systemName: "heart.fill")
@@ -63,9 +73,13 @@ private struct RecordRow: View {
             }
             HStack(spacing: 16) {
                 metric("体重", record.weight, "%.1f", "kg")
-                metric("体脂肪率", record.fatPercent, "%.1f", "%")
-                metric("内臓脂肪", record.visceralLevel, "%.0f", "")
-                metric("筋肉量", record.muscleMass, "%.1f", "kg")
+                if record.isManual {
+                    metric("腹囲", record.waist, "%.1f", "cm")
+                } else {
+                    metric("体脂肪率", record.fatPercent, "%.1f", "%")
+                    metric("内臓脂肪", record.visceralLevel, "%.0f", "")
+                    metric("筋肉量", record.muscleMass, "%.1f", "kg")
+                }
             }
         }
         .padding(.vertical, 2)

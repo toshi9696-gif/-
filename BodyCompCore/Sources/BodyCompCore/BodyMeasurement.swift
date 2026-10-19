@@ -1,10 +1,14 @@
 import Foundation
 
-/// TANITA DC-430A のレシートに印字される数値項目。
+/// TANITA DC-430A のレシートに印字される数値項目と、手入力で記録する腹囲。
 public enum ReceiptField: String, CaseIterable, Hashable, Sendable {
     case age, height, clothes
     case weight, fatPercent, fatMass, leanMass, muscleMass, boneMass, bmr, visceralLevel, legScore, bmi
+    /// 腹囲（メジャーで測って手入力する。レシートには印字されない）。
+    case waist
 
+    /// レシートに印字される項目（腹囲を除く）。
+    public static let receiptFields: [ReceiptField] = allCases.filter { $0 != .waist }
     public static let inputFields: [ReceiptField] = [.age, .height, .clothes]
     public static let resultFields: [ReceiptField] = [
         .weight, .fatPercent, .fatMass, .leanMass, .muscleMass, .boneMass, .bmr, .visceralLevel, .legScore, .bmi,
@@ -25,13 +29,14 @@ public enum ReceiptField: String, CaseIterable, Hashable, Sendable {
         case .visceralLevel: "内臓脂肪レベル"
         case .legScore: "脚点"
         case .bmi: "BMI"
+        case .waist: "腹囲"
         }
     }
 
     public var unit: String {
         switch self {
         case .age: "才"
-        case .height: "cm"
+        case .height, .waist: "cm"
         case .clothes, .weight, .fatMass, .leanMass, .muscleMass, .boneMass: "kg"
         case .fatPercent: "%"
         case .bmr: "kcal"
@@ -63,6 +68,7 @@ public enum ReceiptField: String, CaseIterable, Hashable, Sendable {
         case .visceralLevel: 1...59
         case .legScore: 0...200
         case .bmi: 10...60
+        case .waist: 50...150
         }
     }
 
@@ -82,6 +88,7 @@ public enum ReceiptField: String, CaseIterable, Hashable, Sendable {
         case .visceralLevel: ["内臓脂肪レベル"]
         case .legScore: ["脚点"]
         case .bmi: ["BMI", "BMl", "BM1"]
+        case .waist: ["腹囲"]
         }
     }
 

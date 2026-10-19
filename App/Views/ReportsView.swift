@@ -11,6 +11,7 @@ struct ReportsView: View {
     @AppStorage(SettingsKey.goalVisceral) private var goalVisceral = GoalDefaults.visceral
     @AppStorage(SettingsKey.goalMuscleFloor) private var goalMuscleFloor = GoalDefaults.muscleFloor
     @AppStorage(SettingsKey.goalDeadline) private var goalDeadline = GoalDefaults.deadline
+    @AppStorage(SettingsKey.reportNotes) private var reportNotes = GoalDefaults.reportNotes
 
     @State private var isGenerating = false
     @State private var errorMessage: String?
@@ -35,7 +36,7 @@ struct ReportsView: View {
                     Text(errorMessage).font(.footnote).foregroundStyle(.red)
                 }
             } footer: {
-                Text("Claude に送るのは、週ごとに集計した体組成と活動の値と目標だけです。日ごとの値や名前は送りません。同じ週に作り直すと上書きされます。")
+                Text("Claude に送るのは、週ごとに集計した体組成・腹囲・活動の値と目標、設定画面の「Claude に伝えておくこと」だけです。日ごとの値や名前は送りません。同じ週に作り直すと上書きされます。")
             }
 
             if !reports.isEmpty {
@@ -69,7 +70,7 @@ struct ReportsView: View {
         errorMessage = nil
         defer { isGenerating = false }
 
-        let fields: [ReceiptField] = [.weight, .fatPercent, .fatMass, .muscleMass, .visceralLevel]
+        let fields: [ReceiptField] = [.weight, .fatPercent, .fatMass, .muscleMass, .visceralLevel, .waist]
         let input = WeeklyReportBuilder.make(
             body: Dictionary(uniqueKeysWithValues: fields.map { ($0, records.points($0)) }),
             activity: activity.days,
@@ -79,6 +80,7 @@ struct ReportsView: View {
             deadline: Date(timeIntervalSince1970: goalDeadline),
             zone2Range: activity.zone2Range,
             vo2Max: activity.vo2Max,
+            userNotes: reportNotes,
             today: Date()
         )
         do {

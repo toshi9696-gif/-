@@ -12,6 +12,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.zone2High) private var zone2High = 130.0
     @Environment(ActivityModel.self) private var activity
     @AppStorage(SettingsKey.reportReminder) private var reportReminder = false
+    @AppStorage(SettingsKey.reportNotes) private var reportNotes = GoalDefaults.reportNotes
     @State private var healthMessage: String?
     @State private var apiKeyInput = ""
     @State private var hasAPIKey = Keychain.load(account: Keychain.claudeAPIKey) != nil
@@ -53,6 +54,11 @@ struct SettingsView: View {
                             hasAPIKey = true
                         }
                         .disabled(apiKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Claude に伝えておくこと").font(.subheadline)
+                        TextField("例：お酒は飲まない、夕食は19時ごろ", text: $reportNotes, axis: .vertical)
+                            .lineLimit(2...5)
                     }
                     Toggle("日曜20時に作成を知らせる", isOn: Binding(
                         get: { reportReminder },

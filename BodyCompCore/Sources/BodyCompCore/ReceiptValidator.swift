@@ -23,7 +23,7 @@ public enum ReceiptValidator {
             issues.append(ValidationIssue(fields: [], message: "日時を読み取れませんでした"))
         }
 
-        let missing = ReceiptField.allCases.filter { m[$0] == nil }
+        let missing = ReceiptField.receiptFields.filter { m[$0] == nil }
         if !missing.isEmpty {
             let names = missing.map(\.displayName).joined(separator: "・")
             issues.append(ValidationIssue(fields: Set(missing), message: "読み取れなかった項目: \(names)"))

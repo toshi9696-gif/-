@@ -2,7 +2,7 @@ import BodyCompCore
 import Foundation
 import SwiftData
 
-/// レシート1枚分の記録。日時が同じ記録は1件だけ持つ。
+/// レシート1枚分、または手入力（体重・腹囲）の記録。日時が同じ記録は1件だけ持つ。
 @Model
 final class BodyRecord {
     @Attribute(.unique) var measuredAt: Date
@@ -19,7 +19,10 @@ final class BodyRecord {
     var visceralLevel: Double?
     var legScore: Double?
     var bmi: Double?
+    var waist: Double?
     var bodyType: String?
+    /// 体組成計のレシートではなく、手入力した記録。
+    var isManual: Bool = false
     var healthKitSynced: Bool = false
     var updatedAt: Date = Date()
 
@@ -43,6 +46,7 @@ final class BodyRecord {
         visceralLevel = m[.visceralLevel]
         legScore = m[.legScore]
         bmi = m[.bmi]
+        waist = m[.waist]
         bodyType = m.bodyType
         healthKitSynced = false
         updatedAt = Date()
@@ -63,6 +67,7 @@ final class BodyRecord {
         case .visceralLevel: visceralLevel
         case .legScore: legScore
         case .bmi: bmi
+        case .waist: waist
         }
     }
 

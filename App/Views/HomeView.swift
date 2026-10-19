@@ -27,6 +27,7 @@ struct HomeView: View {
                         goal: goalVisceral,
                         deadline: Date(timeIntervalSince1970: goalDeadline)
                     )
+                    WaistCard(points: records.points(.waist))
                     WeightCard(points: records.points(.weight))
                     MuscleCard(points: records.points(.muscleMass), floor: goalMuscleFloor)
                     ActivityCard(model: activity)
@@ -113,6 +114,56 @@ private struct VisceralCard: View {
 
     private func format(_ value: Double) -> String {
         value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
+    }
+}
+
+// MARK: - 腹囲
+
+private struct WaistCard: View {
+    let points: [DataPoint]
+
+    /// 日本の健診（特定健診）で、男性の内臓脂肪の多さの目安とされる腹囲。
+    private let reference = 85.0
+
+    var body: some View {
+        Card(title: "腹囲", systemImage: "ruler") {
+            if let latest = points.last, let first = points.first {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(String(format: "%.1f cm", latest.value))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("目安 \(Int(reference)) cm 未満")
+                        if points.count > 1 {
+                            Text("開始時から \(signed(latest.value - first.value)) cm").foregroundStyle(.secondary)
+                        }
+                    }
+                    .font(.subheadline)
+                }
+                if points.count >= 2 {
+                    let values = points.map(\.value) + [reference]
+                    Chart {
+                        ForEach(points, id: \.date) { point in
+                            LineMark(x: .value("日付", point.date), y: .value("cm", point.value))
+                            PointMark(x: .value("日付", point.date), y: .value("cm", point.value))
+                        }
+                        RuleMark(y: .value("目安", reference))
+                            .foregroundStyle(.orange)
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    }
+                    .chartYScale(domain: ChartScale.yDomain(values, minimumSpan: 4))
+                    .chartXAxis { ChartScale.dateAxis }
+                    .frame(height: 120)
+                }
+                Text("腹囲は内臓脂肪の量とよく連動します。週1回、同じ条件で測りましょう。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("右上の ✎ ボタンから、メジャーで測った腹囲を記録できます。体組成計が使えない間の、内臓脂肪の目安になります。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
