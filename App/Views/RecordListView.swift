@@ -59,7 +59,7 @@ private struct RecordRow: View {
                 Text(record.measuredAt, format: .dateTime.year().month().day().weekday().hour().minute())
                     .font(.subheadline)
                 if record.isManual {
-                    Text("手入力")
+                    Text(record.device == .omron ? "オムロン" : "手入力")
                         .font(.caption)
                         .padding(.horizontal, 6)
                         .background(.quaternary, in: Capsule())
@@ -73,7 +73,11 @@ private struct RecordRow: View {
             }
             HStack(spacing: 16) {
                 metric("体重", record.weight, "%.1f", "kg")
-                if record.isManual {
+                if record.device == .omron {
+                    metric("体脂肪率", record.fatPercent, "%.1f", "%")
+                    metric("内臓脂肪", record.visceralLevel, "%.0f", "")
+                    metric("骨格筋率", record.skeletalMusclePercent, "%.1f", "%")
+                } else if record.isManual {
                     metric("腹囲", record.waist, "%.1f", "cm")
                 } else {
                     metric("体脂肪率", record.fatPercent, "%.1f", "%")

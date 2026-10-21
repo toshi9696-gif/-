@@ -46,9 +46,30 @@ final class WeeklyReportTests: XCTestCase {
         XCTAssertEqual(input.zone2RangeBpm, [120, 130])
         XCTAssertEqual(input.vo2Max, 31.7)
         XCTAssertEqual(input.muscleCheck?.warning, false)
+        XCTAssertEqual(input.muscleCheck?.unit, "kg")
 
         // 送る JSON に日ごとの日時が含まれないこと。
         let json = String(data: try JSONEncoder().encode(input), encoding: .utf8)!
         XCTAssertFalse(json.contains("2026-10-07"))
+    }
+
+    /// 体組成計を替えた後は、今の機種を使い始めた週を出発点にし、骨格筋率で筋肉を見張る。
+    func testUsesSkeletalMusclePercentAfterSwitchingScale() throws {
+        let body: [ReceiptField: [DataPoint]] = [
+            .weight: [DataPoint(date: date(10, 5), value: 64.8), DataPoint(date: date(10, 21), value: 64.5)],
+            .skeletalMusclePercent: [DataPoint(date: date(10, 21), value: 30.2)],
+            .muscleMass: [],
+        ]
+        let input = WeeklyReportBuilder.make(
+            body: body, activity: [], age: 59, goalVisceral: 9, goalMuscle: 50.5,
+            deadline: date(10, 31), zone2Range: nil, vo2Max: nil,
+            scaleDevice: "オムロン", baselineFrom: date(10, 21),
+            today: date(10, 22, hour: 12), calendar: calendar
+        )
+        XCTAssertEqual(input.scaleDevice, "オムロン")
+        XCTAssertEqual(input.baselineWeek?.weekStart, "2026-10-19")
+        XCTAssertEqual(input.muscleCheck?.measure, "骨格筋率")
+        XCTAssertEqual(input.muscleCheck?.unit, "%")
+        XCTAssertEqual(input.bodyWeeks.last?.skeletalMusclePercentAverage, 30.2)
     }
 }

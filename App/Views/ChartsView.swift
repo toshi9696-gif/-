@@ -33,11 +33,12 @@ struct ChartsView: View {
     @Environment(ActivityModel.self) private var activity
 
     @State private var field: ReceiptField = .visceralLevel
+    @State private var device: ScaleDevice?
     @State private var period: ChartPeriod = .month1
     @State private var activityMetric: ActivityMetric = .zone2
 
     private let fields: [ReceiptField] = [
-        .visceralLevel, .waist, .weight, .fatPercent, .muscleMass, .fatMass, .bmr, .legScore, .bmi,
+        .visceralLevel, .waist, .weight, .fatPercent, .muscleMass, .skeletalMusclePercent, .fatMass, .bmr, .legScore, .bmi,
     ]
 
     /// 期間の始まり。「全期間」は最初の記録の日（記録がなければ活動データの最初の日）。
@@ -53,8 +54,13 @@ struct ChartsView: View {
         periodStart...Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date()))!
     }
 
+    /// 機種によって値が変わる項目で表示する機器。選んでいなければ、最後に使った機器。
+    private var selectedDevice: ScaleDevice {
+        device ?? records.currentDevice
+    }
+
     private var points: [DataPoint] {
-        records.points(field).filter { $0.date >= periodStart }
+        records.points(field, device: selectedDevice).filter { $0.date >= periodStart }
     }
 
     private var activityPoints: [DataPoint] {
@@ -93,6 +99,15 @@ struct ChartsView: View {
             Section {
                 Picker("項目", selection: $field) {
                     ForEach(fields, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                if ReceiptField.deviceSpecificFields.contains(field) {
+                    Picker("機器", selection: Binding(
+                        get: { selectedDevice },
+                        set: { device = $0 }
+                    )) {
+                        ForEach(ScaleDevice.allCases) { Text($0.displayName).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
                 }
                 Picker("期間", selection: $period) {
                     ForEach(ChartPeriod.allCases) { Text($0.rawValue).tag($0) }

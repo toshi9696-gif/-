@@ -20,6 +20,8 @@ public struct WeeklyReportInput: Codable, Equatable, Sendable {
         public var fatMassKgAverage: Double?
         /// 腹囲（メジャーで手入力）。体組成計が使えない期間の内臓脂肪の目安にもなる。
         public var waistCmAverage: Double?
+        /// 骨格筋率（オムロンで測った週だけ）。
+        public var skeletalMusclePercentAverage: Double?
     }
 
     public struct ActivityWeek: Codable, Equatable, Sendable {
@@ -33,9 +35,12 @@ public struct WeeklyReportInput: Codable, Equatable, Sendable {
         public var hrvMs: Double?
     }
 
+    /// 筋肉の見張り。タニタは筋肉量（kg）、オムロンは骨格筋率（%）で判定する。
     public struct MuscleCheck: Codable, Equatable, Sendable {
-        public var baselineKg: Double
-        public var currentKg: Double
+        public var measure: String
+        public var unit: String
+        public var baseline: Double
+        public var current: Double
         public var warning: Bool
     }
 
@@ -53,6 +58,8 @@ public struct WeeklyReportInput: Codable, Equatable, Sendable {
     /// Zone2 の心拍範囲 [下限, 上限]。Zone2 はワークアウト中の心拍だけで数えている。
     public var zone2RangeBpm: [Int]?
     public var vo2Max: Double?
+    /// 体組成の値（体重・腹囲以外）を測った体組成計（"タニタ" または "オムロン"）。機種が違う値どうしは比べられない。
+    public var scaleDevice: String?
     /// 利用者が設定画面で書いた、Claude に伝えておきたい生活の前提（飲酒・食事量など）。
     public var userNotes: String?
 }
@@ -69,6 +76,8 @@ public enum WeeklyReportBuilder {
         zone2Range: ClosedRange<Double>?,
         vo2Max: Double?,
         userNotes: String? = nil,
+        scaleDevice: String? = nil,
+        baselineFrom: Date? = nil,
         today: Date,
         calendar: Calendar = .current
     ) -> WeeklyReportInput {
@@ -102,7 +111,8 @@ public enum WeeklyReportBuilder {
                 fatPercentAverage: average(.fatPercent),
                 muscleMassKgAverage: average(.muscleMass),
                 fatMassKgAverage: average(.fatMass),
-                waistCmAverage: average(.waist)
+                waistCmAverage: average(.waist),
+                skeletalMusclePercentAverage: average(.skeletalMusclePercent)
             )
         }
 
@@ -120,10 +130,14 @@ public enum WeeklyReportBuilder {
             )
         }
 
-        let firstRecord = body.values.flatMap { $0 }.map(\.date).min()
+        // 体組成計を替えた場合は、今の機種を使い始めた週を出発点にする。
+        let firstRecord = baselineFrom ?? body.values.flatMap { $0 }.map(\.date).min()
         let baseline = firstRecord.map { bodyWeek(calendar.dateInterval(of: .weekOfYear, for: $0)!.start) }
 
-        let muscle = (body[.muscleMass]).flatMap { MuscleGuard.evaluate($0, calendar: calendar) }
+        let muscleField = [ReceiptField.muscleMass, .skeletalMusclePercent].first { !(body[$0] ?? []).isEmpty }
+        let muscle = muscleField.flatMap { field in
+            MuscleGuard.evaluate(body[field] ?? [], calendar: calendar).map { (field, $0) }
+        }
         let daysLeft = calendar.dateComponents(
             [.day], from: calendar.startOfDay(for: today), to: calendar.startOfDay(for: deadline)
         ).day ?? 0
@@ -141,13 +155,15 @@ public enum WeeklyReportBuilder {
             baselineWeek: baseline,
             bodyWeeks: weekStarts.map(bodyWeek).filter { $0.measurementDays > 0 },
             activityWeeks: weekStarts.map(activityWeek).filter { $0.daysWithData > 0 },
-            muscleCheck: muscle.map {
+            muscleCheck: muscle.map { field, check in
                 WeeklyReportInput.MuscleCheck(
-                    baselineKg: round1($0.baseline), currentKg: round1($0.current), warning: $0.isWarning
+                    measure: field.displayName, unit: field.unit,
+                    baseline: round1(check.baseline), current: round1(check.current), warning: check.isWarning
                 )
             },
             zone2RangeBpm: zone2Range.map { [Int($0.lowerBound.rounded()), Int($0.upperBound.rounded())] },
             vo2Max: vo2Max.map(round1),
+            scaleDevice: scaleDevice,
             userNotes: userNotes.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
         )
     }

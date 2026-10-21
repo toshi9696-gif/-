@@ -26,7 +26,7 @@ extension ReceiptField {
         case .bmr: 60
         case .waist: 4
         case .legScore: 10
-        case .visceralLevel, .weight, .muscleMass, .fatMass, .leanMass, .fatPercent: 2
+        case .visceralLevel, .weight, .muscleMass, .fatMass, .leanMass, .fatPercent, .skeletalMusclePercent: 2
         default: 1
         }
     }

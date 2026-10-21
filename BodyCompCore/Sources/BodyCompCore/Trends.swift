@@ -56,21 +56,21 @@ public enum Trends {
 }
 
 /// 筋肉量が落ちていないかの判定。最初の7日間の平均と、直近の7日平均を比べる。
+/// しきい値は、筋肉量（kg）なら 1.0kg、骨格筋率（%）なら 1.0 ポイント。
 public struct MuscleGuard: Equatable, Sendable {
-    public static let threshold = 1.0
-
     public let baseline: Double
     public let current: Double
+    public let threshold: Double
 
     public var drop: Double { baseline - current }
-    public var isWarning: Bool { drop >= Self.threshold - 1e-9 }
+    public var isWarning: Bool { drop >= threshold - 1e-9 }
 
-    public static func evaluate(_ points: [DataPoint], calendar: Calendar = .current) -> MuscleGuard? {
+    public static func evaluate(_ points: [DataPoint], threshold: Double = 1.0, calendar: Calendar = .current) -> MuscleGuard? {
         let daily = Trends.dailyLatest(points, calendar: calendar)
         guard let first = daily.first,
               let latest = Trends.movingAverage(daily, calendar: calendar).last else { return nil }
         let end = calendar.date(byAdding: .day, value: 7, to: calendar.startOfDay(for: first.date))!
         let baseline = daily.filter { $0.date < end }.map(\.value)
-        return MuscleGuard(baseline: baseline.reduce(0, +) / Double(baseline.count), current: latest.value)
+        return MuscleGuard(baseline: baseline.reduce(0, +) / Double(baseline.count), current: latest.value, threshold: threshold)
     }
 }

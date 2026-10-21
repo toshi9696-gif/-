@@ -71,9 +71,11 @@ struct ReportsView: View {
         errorMessage = nil
         defer { isGenerating = false }
 
-        let fields: [ReceiptField] = [.weight, .fatPercent, .fatMass, .muscleMass, .visceralLevel, .waist]
+        // 体組成の値は、最後に使った機器の記録だけを送る（機種が違う値どうしは比べられないため）。
+        let device = records.currentDevice
+        let fields: [ReceiptField] = [.weight, .fatPercent, .fatMass, .muscleMass, .skeletalMusclePercent, .visceralLevel, .waist]
         let input = WeeklyReportBuilder.make(
-            body: Dictionary(uniqueKeysWithValues: fields.map { ($0, records.points($0)) }),
+            body: Dictionary(uniqueKeysWithValues: fields.map { ($0, records.points($0, device: device)) }),
             activity: activity.days,
             age: records.last?.age.map { Int($0) },
             goalVisceral: goalVisceral,
@@ -83,6 +85,8 @@ struct ReportsView: View {
             zone2Range: activity.zone2Range,
             vo2Max: activity.vo2Max,
             userNotes: reportNotes,
+            scaleDevice: device.displayName,
+            baselineFrom: records.firstMeasurement(of: device),
             today: Date()
         )
         do {

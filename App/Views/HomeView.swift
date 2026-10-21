@@ -22,15 +22,27 @@ struct HomeView: View {
                 )
                 .padding(.top, 80)
             } else {
+                let device = records.currentDevice
                 VStack(spacing: 16) {
                     VisceralCard(
-                        points: records.points(.visceralLevel),
+                        points: records.points(.visceralLevel, device: device),
                         goal: goalVisceral,
-                        deadline: Date(timeIntervalSince1970: goalDeadline)
+                        deadline: Date(timeIntervalSince1970: goalDeadline),
+                        device: device
                     )
                     WaistCard(points: records.points(.waist), goal: goalWaist)
                     WeightCard(points: records.points(.weight))
-                    MuscleCard(points: records.points(.muscleMass), floor: goalMuscleFloor)
+                    if device == .omron {
+                        MuscleCard(
+                            title: "骨格筋率（オムロン・7日平均）", unit: "%",
+                            points: records.points(.skeletalMusclePercent, device: .omron), floor: nil
+                        )
+                    } else {
+                        MuscleCard(
+                            title: "筋肉量（7日平均）", unit: "kg",
+                            points: records.points(.muscleMass, device: .tanita), floor: goalMuscleFloor
+                        )
+                    }
                     ActivityCard(model: activity)
                 }
                 .padding()
@@ -46,6 +58,7 @@ private struct VisceralCard: View {
     let points: [DataPoint]
     let goal: Double
     let deadline: Date
+    let device: ScaleDevice
 
     private var weekly: [DataPoint] { Trends.weeklyMedian(points) }
 
@@ -60,7 +73,7 @@ private struct VisceralCard: View {
     }
 
     var body: some View {
-        Card(title: "内臓脂肪レベル", systemImage: "target") {
+        Card(title: device == .omron ? "内臓脂肪レベル（オムロン）" : "内臓脂肪レベル", systemImage: "target") {
             if let current = weekly.last?.value {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading) {
@@ -106,7 +119,9 @@ private struct VisceralCard: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text("内臓脂肪レベルは日々±1程度ぶれるため、週ごとの中央値で判断します。")
+                Text(device == .omron
+                     ? "オムロンはタニタと計算方法が違うため、オムロンを使い始めた日からの変化で見ます。日々±1程度ぶれるため、週ごとの中央値で判断します。"
+                     : "内臓脂肪レベルは日々±1程度ぶれるため、週ごとの中央値で判断します。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -204,35 +219,40 @@ private struct WeightCard: View {
 // MARK: - 筋肉量
 
 private struct MuscleCard: View {
+    let title: String
+    let unit: String
     let points: [DataPoint]
-    let floor: Double
+    /// 下限（タニタの筋肉量だけ設定がある）。
+    let floor: Double?
 
     private var average: [DataPoint] { Trends.movingAverage(points) }
 
     var body: some View {
-        Card(title: "筋肉量（7日平均）", systemImage: "figure.strengthtraining.traditional") {
+        Card(title: title, systemImage: "figure.strengthtraining.traditional") {
             if let latest = average.last {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(String(format: "%.1f kg", latest.value))
+                    Text(String(format: "%.1f ", latest.value) + unit)
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                     Spacer()
-                    Text(String(format: "下限 %.1f kg", floor))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    if let floor {
+                        Text(String(format: "下限 %.1f ", floor) + unit)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                RecentTrendChart(points: points, average: average, unit: "kg", floor: floor)
+                RecentTrendChart(points: points, average: average, unit: unit, floor: floor)
 
                 if let guardResult = MuscleGuard.evaluate(points), guardResult.isWarning {
                     Label(
-                        "開始時から \(String(format: "%.1f", guardResult.drop)) kg 減っています。減量より、筋トレと食事量の維持を優先しましょう。",
+                        "開始時から \(String(format: "%.1f", guardResult.drop)) \(unit) 減っています。減量より、筋トレと食事量の維持を優先しましょう。",
                         systemImage: "exclamationmark.triangle.fill"
                     )
                     .foregroundStyle(.red)
-                } else if latest.value < floor {
+                } else if let floor, latest.value < floor {
                     Label("下限を下回っています。筋トレと食事量の維持を優先しましょう。", systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
                 } else {
-                    Label("筋肉量は維持できています", systemImage: "checkmark.circle.fill")
+                    Label("筋肉は維持できています", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                 }
             }

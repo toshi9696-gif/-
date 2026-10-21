@@ -2,54 +2,108 @@ import BodyCompCore
 import SwiftData
 import SwiftUI
 
-/// 体重と腹囲の手入力（体組成計が使えないときや、普通の体重計・メジャーで測ったとき）。
+/// 手入力の記録。体重・腹囲だけ、またはオムロンの体組成計の表示を見て入力する。
 struct ManualEntryView: View {
+    enum Mode: String, CaseIterable, Identifiable {
+        case weightWaist, omron
+
+        var id: Self { self }
+
+        var title: String {
+            switch self {
+            case .weightWaist: "体重・腹囲"
+            case .omron: "オムロン"
+            }
+        }
+
+        var fields: [ReceiptField] {
+            switch self {
+            case .weightWaist: [.weight, .waist]
+            case .omron: [.weight, .fatPercent, .visceralLevel, .skeletalMusclePercent, .bmr, .bmi, .waist]
+            }
+        }
+    }
+
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
     private let editingRecord: BodyRecord?
+    @State private var mode: Mode
     @State private var measuredAt: Date
-    @State private var weightText: String
-    @State private var waistText: String
+    @State private var texts: [ReceiptField: String]
     @State private var showOverwrite = false
     @State private var healthKitError: String?
 
     init(editing record: BodyRecord? = nil) {
         editingRecord = record
+        _mode = State(initialValue: record?.device == .omron ? .omron : .weightWaist)
         _measuredAt = State(initialValue: record?.measuredAt ?? Date())
-        _weightText = State(initialValue: record?.weight.map(ReceiptField.weight.format) ?? "")
-        _waistText = State(initialValue: record?.waist.map(ReceiptField.waist.format) ?? "")
+        var texts: [ReceiptField: String] = [:]
+        for field in Mode.omron.fields {
+            texts[field] = record?.value(field).map(field.format) ?? ""
+        }
+        _texts = State(initialValue: texts)
     }
 
-    private var weight: Double? { Self.number(weightText) }
-    private var waist: Double? { Self.number(waistText) }
+    private func value(_ field: ReceiptField) -> Double? {
+        Double(texts[field, default: ""].replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces))
+    }
 
     private var problems: [String] {
+        let entered = mode.fields.filter { value($0) != nil }
         var problems: [String] = []
-        if weight == nil && waist == nil { problems.append("体重か腹囲のどちらかを入力してください") }
-        if let weight, !ReceiptField.weight.validRange.contains(weight) { problems.append("体重の値を確認してください") }
-        if let waist, !ReceiptField.waist.validRange.contains(waist) { problems.append("腹囲の値を確認してください") }
+        if entered.isEmpty { problems.append("少なくとも1つの項目を入力してください") }
+        for field in entered {
+            if let v = value(field), !field.validRange.contains(v) {
+                problems.append("\(field.displayName)の値を確認してください")
+            }
+        }
         return problems
+    }
+
+    private var hasInput: Bool {
+        mode.fields.contains { !texts[$0, default: ""].isEmpty }
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("日時") {
+                Section {
+                    Picker("記録する内容", selection: $mode) {
+                        ForEach(Mode.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
                     DatePicker("測定日時", selection: $measuredAt)
+                } footer: {
+                    if mode == .omron {
+                        Text("オムロンの体組成計の表示を見て入力してください。タニタとは計算方法が違うため、グラフや傾向はタニタと分けて扱います。")
+                    }
                 }
 
                 Section {
-                    row("体重", text: $weightText, unit: "kg")
-                    row("腹囲", text: $waistText, unit: "cm")
+                    ForEach(mode.fields, id: \.self) { field in
+                        HStack {
+                            Text(field.displayName)
+                            Spacer()
+                            TextField("—", text: Binding(
+                                get: { texts[field, default: ""] },
+                                set: { texts[field] = $0 }
+                            ))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 100)
+                            Text(field.unit)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 44, alignment: .leading)
+                        }
+                    }
                 } footer: {
                     Text("""
                     腹囲は、おへその高さでメジャーを床と水平にして測ります。朝起きてトイレのあと、軽く息を吐いた状態で、週1回同じ条件で測ってください。男性は 85cm 以上が内臓脂肪の多い目安です。
-                    体組成計とは別の体重計で測った体重は、少しずれることがあります。
                     """)
                 }
 
-                if !problems.isEmpty && (!weightText.isEmpty || !waistText.isEmpty) {
+                if hasInput && !problems.isEmpty {
                     Section {
                         ForEach(problems, id: \.self) { problem in
                             Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
@@ -57,7 +111,7 @@ struct ManualEntryView: View {
                     }
                 }
             }
-            .navigationTitle(editingRecord == nil ? "体重・腹囲を記録" : "記録の編集")
+            .navigationTitle(editingRecord == nil ? "手入力で記録" : "記録の編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -82,20 +136,6 @@ struct ManualEntryView: View {
         }
     }
 
-    private func row(_ title: String, text: Binding<String>, unit: String) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            TextField("—", text: text)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .frame(maxWidth: 100)
-            Text(unit)
-                .foregroundStyle(.secondary)
-                .frame(width: 36, alignment: .leading)
-        }
-    }
-
     private func save(overwrite: Bool) {
         let target = measuredAt
         let originalDate = editingRecord?.measuredAt
@@ -115,15 +155,18 @@ struct ManualEntryView: View {
             record = editingRecord
         } else {
             record = BodyRecord(measurement: BodyMeasurement(measuredAt: target))
-            record.isManual = true
             context.insert(record)
         }
-        // 手入力の項目だけを書き換え、同じ記録にあるレシートの値は残す。
-        record.measuredAt = target
-        record.weight = weight
-        record.waist = waist
-        record.healthKitSynced = false
-        record.updatedAt = Date()
+
+        // 入力した内容の項目だけを書き換える。
+        var m = record.measurement
+        m.measuredAt = target
+        for field in mode.fields {
+            m[field] = value(field)
+        }
+        record.apply(m)
+        record.isManual = true
+        record.device = mode == .omron ? .omron : nil
         try? context.save()
 
         let measurement = record.measurement
@@ -140,9 +183,5 @@ struct ManualEntryView: View {
                 healthKitError = error.localizedDescription
             }
         }
-    }
-
-    private static func number(_ text: String) -> Double? {
-        Double(text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces))
     }
 }
