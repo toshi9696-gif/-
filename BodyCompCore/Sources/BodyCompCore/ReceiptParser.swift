@@ -33,10 +33,10 @@ public enum ReceiptParser {
     /// 行のテキストから測定値を取り出す。同じ項目が複数回出てきた場合は最初の値を使う。
     /// 最も一致する項目がすでに埋まっている場合は、次に一致する空いた項目に割り当てる
     /// （「除脂肪量」の「除」が読めず「脂肪量」と区別できないときなど）。
-    public static func parse(rows: [String], calendar: Calendar = .current) -> BodyMeasurement {
+    public static func parse(rows: [String], calendar: Calendar = .current, now: Date = Date()) -> BodyMeasurement {
         let compact = rows.map(normalize)
         var measurement = BodyMeasurement()
-        measurement.measuredAt = parseDate(compact, calendar: calendar)
+        measurement.measuredAt = parseDate(compact, calendar: calendar, now: now)
         for row in compact {
             let (candidates, remainder) = matchLabels(row)
             guard let field = candidates.first(where: { measurement[$0] == nil }),
@@ -51,11 +51,12 @@ public enum ReceiptParser {
     /// （項目名で割り当てる／並び順で割り当てる）を試し、整合性チェックの問題が最も少ないものを返す。
     public static func bestParse(
         _ candidates: [[String]],
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        now: Date = Date()
     ) -> (measurement: BodyMeasurement, rows: [String]) {
         var best: (measurement: BodyMeasurement, rows: [String], score: Int)?
         for rows in candidates {
-            for measurement in interpretations(of: rows, calendar: calendar) {
+            for measurement in interpretations(of: rows, calendar: calendar, now: now) {
                 let score = problemScore(measurement, calendar: calendar)
                 if best == nil || score < best!.score {
                     best = (measurement, rows, score)
@@ -72,8 +73,8 @@ public enum ReceiptParser {
     }
 
     /// 項目名による読み取り、その空欄を並び順で補ったもの、並び順を優先したものの3通り。
-    static func interpretations(of rows: [String], calendar: Calendar) -> [BodyMeasurement] {
-        let byLabel = parse(rows: rows, calendar: calendar)
+    static func interpretations(of rows: [String], calendar: Calendar, now: Date) -> [BodyMeasurement] {
+        let byLabel = parse(rows: rows, calendar: calendar, now: now)
         let byPosition = positionalValues(rows)
         guard !byPosition.isEmpty else { return [byLabel] }
         var filled = byLabel
@@ -177,7 +178,7 @@ public enum ReceiptParser {
     /// 小数点が読めずに想定範囲を外れた場合は、レシートの桁数に合わせて小数点を補う（「113」→「11.3」）。
     static func number(from text: Substring, field: ReceiptField? = nil) -> Double? {
         let withoutUnits = String(text)
-            .replacingOccurrences(of: #"(?i)kca.|k[gq9]|cm|\(?PT\)?"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)kca.|k[gq9]|cm|c[il1|]{1,2}$|\(?PT\)?"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: #"[%才点]"#, with: "", options: .regularExpression)
         let mapped = String(withoutUnits.map { character -> Character in
             switch character {
@@ -204,15 +205,23 @@ public enum ReceiptParser {
     }
 
     /// 「2026/09/30(水)21:25」形式の日時を探す。曜日部分は読み間違いがあっても無視する。
-    static func parseDate(_ rows: [String], calendar: Calendar) -> Date? {
-        let regex = try! NSRegularExpression(pattern: #"(20\d{2})/(\d{1,2})/(\d{1,2}).{0,5}?(\d{1,2}):(\d{2})"#)
+    /// 年が読み違えられた場合（「2936」など）は、測った直後に撮影する前提で、今年（年をまたいだ直後なら去年）に直す。
+    static func parseDate(_ rows: [String], calendar: Calendar, now: Date = Date()) -> Date? {
+        let regex = try! NSRegularExpression(pattern: #"(\d{4})/(\d{1,2})/(\d{1,2}).{0,5}?(\d{1,2}):(\d{2})"#)
         for text in rows + [rows.joined()] {
             let ns = text as NSString
             guard let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) else { continue }
             let n = (1...5).compactMap { Int(ns.substring(with: match.range(at: $0))) }
             guard n.count == 5, (1...12).contains(n[1]), (1...31).contains(n[2]),
                   (0...23).contains(n[3]), (0...59).contains(n[4]) else { continue }
-            let components = DateComponents(year: n[0], month: n[1], day: n[2], hour: n[3], minute: n[4])
+            let thisYear = calendar.component(.year, from: now)
+            var year = n[0]
+            if !((thisYear - 1)...thisYear).contains(year) { year = thisYear }
+            var components = DateComponents(year: year, month: n[1], day: n[2], hour: n[3], minute: n[4])
+            if year == thisYear, n[0] != thisYear, let date = calendar.date(from: components),
+               date > now.addingTimeInterval(86_400) {
+                components.year = thisYear - 1
+            }
             if let date = calendar.date(from: components) { return date }
         }
         return nil

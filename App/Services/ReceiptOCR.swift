@@ -32,6 +32,9 @@ enum ReceiptOCR {
         request.recognitionLanguages = ["ja-JP", "en-US"]
         // 数値の読み取りが主なので、辞書による補正は使わない。
         request.usesLanguageCorrection = false
+        // 初期値（画像の高さの約 1/32）より小さい文字は無視される。細長いレシートでは1行が画像の高さの 1/50 ほどしかなく、
+        // 1文字ずつ空けて印字された数字が捨てられてしまうため、小さな文字も読むようにする。
+        request.minimumTextHeight = 0.005
 
         try VNImageRequestHandler(cgImage: cgImage, orientation: orientation).perform([request])
 

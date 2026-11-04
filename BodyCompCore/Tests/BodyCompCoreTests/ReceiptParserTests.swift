@@ -179,5 +179,18 @@ final class ReceiptParserTests: XCTestCase {
         XCTAssertEqual(best.measurement[.visceralLevel], 11)
         XCTAssertEqual(ReceiptValidator.validate(best.measurement, calendar: calendar), [])
     }
+
+    /// 年が読み違えられた場合は今年に直し、年をまたいだ直後の12月のレシートは去年として扱う。
+    func testCorrectsMisreadYear() throws {
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 4, hour: 22, minute: 37))!
+        let m = ReceiptParser.parse(rows: ["2936/11/04(水)21:23 DC-430A", "身長 16 7. CIl"], calendar: calendar, now: now)
+        let c = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: try XCTUnwrap(m.measuredAt))
+        XCTAssertEqual([c.year, c.month, c.day, c.hour, c.minute], [2026, 11, 4, 21, 23])
+        XCTAssertEqual(m[.height], 167)
+
+        let newYear = calendar.date(from: DateComponents(year: 2027, month: 1, day: 1, hour: 1))!
+        let december = ReceiptParser.parse(rows: ["2936/12/31(木)22:00"], calendar: calendar, now: newYear)
+        XCTAssertEqual(calendar.component(.year, from: try XCTUnwrap(december.measuredAt)), 2026)
+    }
 }
 
