@@ -2,22 +2,25 @@ import BodyCompCore
 import SwiftData
 import SwiftUI
 
-/// 手入力の記録。体重・腹囲だけ、またはオムロンの体組成計の表示を見て入力する。
+/// 手入力の記録。タニタのレシートやオムロンの表示を見て入力する、または体重・腹囲だけを入力する。
 struct ManualEntryView: View {
     enum Mode: String, CaseIterable, Identifiable {
-        case weightWaist, omron
+        case tanita, omron, weightWaist
 
         var id: Self { self }
 
         var title: String {
             switch self {
-            case .weightWaist: "体重・腹囲"
+            case .tanita: "タニタ"
             case .omron: "オムロン"
+            case .weightWaist: "体重・腹囲"
             }
         }
 
         var fields: [ReceiptField] {
             switch self {
+            // 内臓脂肪の目標と筋肉の見張りに必要な項目に絞る。
+            case .tanita: [.weight, .fatPercent, .muscleMass, .visceralLevel, .waist]
             case .weightWaist: [.weight, .waist]
             case .omron: [.weight, .fatPercent, .visceralLevel, .skeletalMusclePercent, .bmr, .bmi, .waist]
             }
@@ -36,13 +39,20 @@ struct ManualEntryView: View {
 
     init(editing record: BodyRecord? = nil) {
         editingRecord = record
-        _mode = State(initialValue: record?.device == .omron ? .omron : .weightWaist)
+        _mode = State(initialValue: Self.mode(for: record))
         _measuredAt = State(initialValue: record?.measuredAt ?? Date())
         var texts: [ReceiptField: String] = [:]
-        for field in Mode.omron.fields {
+        for field in Mode.allCases.flatMap(\.fields) {
             texts[field] = record?.value(field).map(field.format) ?? ""
         }
         _texts = State(initialValue: texts)
+    }
+
+    /// 新しい記録はタニタ。編集のときは、その記録の内容に合わせる。
+    private static func mode(for record: BodyRecord?) -> Mode {
+        guard let record else { return .tanita }
+        guard record.hasDeviceSpecificValues else { return .weightWaist }
+        return record.device == .omron ? .omron : .tanita
     }
 
     private func value(_ field: ReceiptField) -> Double? {
@@ -75,8 +85,13 @@ struct ManualEntryView: View {
                     .pickerStyle(.segmented)
                     DatePicker("測定日時", selection: $measuredAt)
                 } footer: {
-                    if mode == .omron {
+                    switch mode {
+                    case .tanita:
+                        Text("タニタのレシートを見て入力してください。レシートを撮影して記録したタニタの値と、同じ流れとして扱います。")
+                    case .omron:
                         Text("オムロンの体組成計の表示を見て入力してください。タニタとは計算方法が違うため、グラフや傾向はタニタと分けて扱います。")
+                    case .weightWaist:
+                        EmptyView()
                     }
                 }
 
@@ -166,7 +181,11 @@ struct ManualEntryView: View {
         }
         record.apply(m)
         record.isManual = true
-        record.device = mode == .omron ? .omron : nil
+        switch mode {
+        case .tanita: record.device = .tanita
+        case .omron: record.device = .omron
+        case .weightWaist: if !record.hasDeviceSpecificValues { record.device = nil }
+        }
         try? context.save()
 
         let measurement = record.measurement
