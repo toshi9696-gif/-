@@ -1,4 +1,5 @@
 import BodyCompCore
+import CoreImage.CIFilterBuiltins
 import UIKit
 import Vision
 
@@ -10,26 +11,51 @@ enum ReceiptOCRError: LocalizedError {
 
 /// iPhone 内の Vision でレシートの文字を読み取り、行ごとのテキストを返す。
 enum ReceiptOCR {
-    static func recognizeRows(in image: UIImage) async throws -> [String] {
+    /// 元の画像と、白黒にしてコントラストを強めた画像の両方を読み取る。
+    /// 感熱紙の薄い印字は、コントラストを強めたほうが読めることが多い。どちらを使うかは ReceiptParser.bestParse が決める。
+    static func recognizeRowCandidates(in image: UIImage) async throws -> [[String]] {
         guard let cgImage = image.cgImage else { throw ReceiptOCRError.invalidImage }
         let orientation = CGImagePropertyOrientation(image.imageOrientation)
 
         return try await Task.detached(priority: .userInitiated) {
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.recognitionLanguages = ["ja-JP", "en-US"]
-            // 数値の読み取りが主なので、辞書による補正は使わない。
-            request.usesLanguageCorrection = false
-
-            try VNImageRequestHandler(cgImage: cgImage, orientation: orientation).perform([request])
-
-            let boxes = (request.results ?? []).compactMap { observation -> TextBox? in
-                guard let text = observation.topCandidates(1).first?.string else { return nil }
-                let box = observation.boundingBox
-                return TextBox(text: text, minX: box.minX, midY: box.midY, height: box.height)
+            var candidates = [try ReceiptOCR.recognizeRows(in: cgImage, orientation: orientation)]
+            if let enhanced = ReceiptOCR.enhanced(cgImage) {
+                candidates.append(try ReceiptOCR.recognizeRows(in: enhanced, orientation: orientation))
             }
-            return ReceiptParser.rows(from: boxes)
+            return candidates
         }.value
+    }
+
+    private static func recognizeRows(in cgImage: CGImage, orientation: CGImagePropertyOrientation) throws -> [String] {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.recognitionLanguages = ["ja-JP", "en-US"]
+        // 数値の読み取りが主なので、辞書による補正は使わない。
+        request.usesLanguageCorrection = false
+
+        try VNImageRequestHandler(cgImage: cgImage, orientation: orientation).perform([request])
+
+        let boxes = (request.results ?? []).compactMap { observation -> TextBox? in
+            guard let text = observation.topCandidates(1).first?.string else { return nil }
+            let box = observation.boundingBox
+            return TextBox(text: text, minX: box.minX, midY: box.midY, height: box.height)
+        }
+        return ReceiptParser.rows(from: boxes)
+    }
+
+    /// 白黒にしてコントラストと輪郭を強めた画像。
+    private static func enhanced(_ cgImage: CGImage) -> CGImage? {
+        let input = CIImage(cgImage: cgImage)
+        let controls = CIFilter.colorControls()
+        controls.inputImage = input
+        controls.saturation = 0
+        controls.contrast = 1.8
+        controls.brightness = 0.1
+        let sharpen = CIFilter.sharpenLuminance()
+        sharpen.inputImage = controls.outputImage
+        sharpen.sharpness = 0.8
+        guard let output = sharpen.outputImage ?? controls.outputImage else { return nil }
+        return CIContext().createCGImage(output, from: input.extent)
     }
 }
 

@@ -47,6 +47,83 @@ public enum ReceiptParser {
         return measurement
     }
 
+    /// 複数の読み取り結果（元の画像とコントラストを強めた画像など）と、複数の解釈
+    /// （項目名で割り当てる／並び順で割り当てる）を試し、整合性チェックの問題が最も少ないものを返す。
+    public static func bestParse(
+        _ candidates: [[String]],
+        calendar: Calendar = .current
+    ) -> (measurement: BodyMeasurement, rows: [String]) {
+        var best: (measurement: BodyMeasurement, rows: [String], score: Int)?
+        for rows in candidates {
+            for measurement in interpretations(of: rows, calendar: calendar) {
+                let score = problemScore(measurement, calendar: calendar)
+                if best == nil || score < best!.score {
+                    best = (measurement, rows, score)
+                }
+            }
+        }
+        return best.map { ($0.measurement, $0.rows) } ?? (BodyMeasurement(), candidates.first ?? [])
+    }
+
+    /// 問題のある項目（読めない・範囲外・計算が合わない）の数。日時が読めなければ1を足す。
+    static func problemScore(_ m: BodyMeasurement, calendar: Calendar) -> Int {
+        let flagged = ReceiptValidator.validate(m, calendar: calendar).reduce(into: Set<ReceiptField>()) { $0.formUnion($1.fields) }
+        return flagged.count + (m.measuredAt == nil ? 1 : 0)
+    }
+
+    /// 項目名による読み取り、その空欄を並び順で補ったもの、並び順を優先したものの3通り。
+    static func interpretations(of rows: [String], calendar: Calendar) -> [BodyMeasurement] {
+        let byLabel = parse(rows: rows, calendar: calendar)
+        let byPosition = positionalValues(rows)
+        guard !byPosition.isEmpty else { return [byLabel] }
+        var filled = byLabel
+        var positionFirst = byLabel
+        for (field, value) in byPosition {
+            if filled[field] == nil { filled[field] = value }
+            positionFirst[field] = value
+        }
+        return [byLabel, filled, positionFirst]
+    }
+
+    /// レシートの並び順から値を割り当てる。項目名の漢字が読めなくても、数字の行の順番は保たれることが多い。
+    /// 「入力項目」の後の数字の行を年齢・身長・着衣量、「測定結果」の後の数字の行を体重〜BMI の順に割り当てる。
+    static func positionalValues(_ rows: [String]) -> [ReceiptField: Double] {
+        let compact = rows.map(normalize)
+        func isHeader(_ row: String, _ title: String, minimumHits: Int) -> Bool {
+            guard !row.contains(where: { $0.isASCII && $0.isNumber }), row.count <= title.count + 3 else { return false }
+            return title.filter { row.contains($0) }.count >= minimumHits
+        }
+        let inputStart = compact.firstIndex { isHeader($0, "入力項目", minimumHits: 3) }
+        let resultStart = compact.firstIndex { isHeader($0, "測定結果", minimumHits: 3) }
+
+        func numericRows(from start: Int, until stop: (String) -> Bool) -> [Substring] {
+            var result: [Substring] = []
+            for row in compact[(start + 1)...] {
+                if stop(row) { break }
+                let (_, remainder) = splitLabel(row)
+                if remainder.contains(where: { $0.isASCII && $0.isNumber }) { result.append(remainder) }
+            }
+            return result
+        }
+
+        var values: [ReceiptField: Double] = [:]
+        // 見出しが読めずに後ろの行まで拾った場合に備え、先頭から必要な数だけ使う。
+        // ずれて割り当てた場合は、整合性チェックで問題が増えるので bestParse で選ばれない。
+        func assign(_ rows: [Substring], to fields: [ReceiptField]) {
+            guard rows.count >= fields.count else { return }
+            for (row, field) in zip(rows, fields) {
+                if let value = number(from: row, field: field) { values[field] = value }
+            }
+        }
+        if let inputStart, let resultStart, inputStart < resultStart {
+            assign(numericRows(from: inputStart) { isHeader($0, "測定結果", minimumHits: 3) }, to: ReceiptField.inputFields)
+        }
+        if let resultStart {
+            assign(numericRows(from: resultStart) { isHeader($0, "判定", minimumHits: 2) }, to: ReceiptField.resultFields)
+        }
+        return values
+    }
+
     /// 全角英数字を半角にし、空白をすべて取り除く（レシートは等幅印字で数字の間に空白が入るため）。
     static func normalize(_ text: String) -> String {
         text.precomposedStringWithCompatibilityMapping.filter { !$0.isWhitespace }

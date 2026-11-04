@@ -151,4 +151,33 @@ final class ReceiptParserTests: XCTestCase {
         let issues = ReceiptValidator.validate(m, birthday: wrongBirthday, calendar: calendar)
         XCTAssertEqual(issues.map(\.fields), [[.age]])
     }
+
+    /// 項目名がほとんど読めず、ラベルと値が別の行に分かれていても、並び順から全項目を取り出せる。
+    func testBestParseFallsBackToReceiptOrder() throws {
+        let garbled = [
+            "TANITA", "体組成計", "2026/11/04(水)21:30", "入力頂目", "体型モード スタンダード", "性別 男性",
+            "年合", "5 9 才", "身畏 1 6 7. 0 cm", "着衣暈 (PT) 0. 5 kg", "測定結呆",
+            "休重", "6 4. 2 kg", "体脂肋率 1 6 5 %", "脂肋暈 1 0. 6 kg", "険脂肋暈 5 3. 6 kg", "筋肉暈 5 0. 8 kg",
+            "推定骨暈 2. 8 kg", "基礎代謝暈 1 4 4 9 kca1", "内臓脂肋レペル 1 1", "脚点 9 5 点", "BM| 2 3. 0",
+            "判定", "◇体脂肪率", "やせ |標 準|軽肥満|肥満",
+        ]
+        let best = ReceiptParser.bestParse([["読めない"], garbled], calendar: calendar)
+        let expected: [ReceiptField: Double] = [
+            .age: 59, .height: 167.0, .clothes: 0.5,
+            .weight: 64.2, .fatPercent: 16.5, .fatMass: 10.6, .leanMass: 53.6, .muscleMass: 50.8,
+            .boneMass: 2.8, .bmr: 1449, .visceralLevel: 11, .legScore: 95, .bmi: 23.0,
+        ]
+        XCTAssertEqual(best.measurement.values, expected)
+        XCTAssertEqual(best.rows, garbled)
+        XCTAssertEqual(ReceiptValidator.validate(best.measurement, calendar: calendar), [])
+    }
+
+    /// きれいに読めたレシートは、並び順で上書きしても結果が変わらない。
+    func testBestParseKeepsCleanReceipt() {
+        let best = ReceiptParser.bestParse([sampleRows], calendar: calendar)
+        XCTAssertEqual(best.measurement[.weight], 64.8)
+        XCTAssertEqual(best.measurement[.visceralLevel], 11)
+        XCTAssertEqual(ReceiptValidator.validate(best.measurement, calendar: calendar), [])
+    }
 }
+

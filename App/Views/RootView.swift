@@ -134,8 +134,9 @@ struct RootView: View {
         Task {
             defer { isProcessing = false }
             do {
-                let rows = try await ReceiptOCR.recognizeRows(in: image)
-                draft = ReceiptDraft(measurement: ReceiptParser.parse(rows: rows), rawRows: rows)
+                let candidates = try await ReceiptOCR.recognizeRowCandidates(in: image)
+                let best = ReceiptParser.bestParse(candidates)
+                draft = ReceiptDraft(measurement: best.measurement, rawRows: best.rows)
             } catch {
                 errorMessage = error.localizedDescription
             }
